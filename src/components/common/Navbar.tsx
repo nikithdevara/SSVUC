@@ -2,18 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Menu,
   X,
-  Search,
   Heart,
   ShieldCheck,
   UserCheck,
   ChevronDown,
   Calendar,
   Layers,
-  FileText,
   DollarSign,
-  Users,
   Bell,
-  Image as ImageIcon,
   Phone,
   BarChart3,
 } from 'lucide-react';
@@ -31,8 +27,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   currentRoute,
   onNavigate,
-  onOpenSearch,
-  onOpenCommandPalette,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
@@ -50,14 +44,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       window.removeEventListener('svuc_store_updated', handleAuthChange);
     };
   }, []);
-
-  const handleSearchClick = () => {
-    if (onOpenCommandPalette) {
-      onOpenCommandPalette();
-    } else if (onOpenSearch) {
-      onOpenSearch();
-    }
-  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -145,6 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => handleNav('/admin/dashboard')}
                 className="hover:text-[#FDE68A] flex items-center gap-1.5 transition-colors font-bold text-[#FFFBEB] cursor-pointer"
+                title="Access Executive Admin Portal"
               >
                 <UserCheck className="w-3.5 h-3.5 text-[#F59E0B] shrink-0" />
                 <span className="hidden sm:inline">Admin Portal</span>
@@ -152,9 +139,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={() => handleNav('/admin/login')}
-                className="hover:text-[#FDE68A] opacity-90 hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer"
+                className="hover:text-[#FDE68A] opacity-90 hover:opacity-100 transition-opacity flex items-center gap-1.5 font-medium cursor-pointer"
+                title="Access Committee Portal"
               >
-                <span className="hidden sm:inline">Committee Login</span>
+                <span className="hidden xs:inline sm:inline">Committee Portal</span>
+                <span className="xs:hidden">Portal</span>
               </button>
             )}
           </div>
@@ -162,10 +151,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* 2. Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20 gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
+        <div className="flex items-center justify-between h-16 sm:h-20 gap-3 sm:gap-4">
           
-          {/* Brand Identity / Logo (Guaranteed shrink-0, perfectly aligned) */}
+          {/* Brand Identity / Logo (Left) */}
           <button
             onClick={() => handleNav('/')}
             className="flex items-center gap-2.5 sm:gap-3.5 text-left group focus:outline-none shrink-0 py-1"
@@ -188,8 +177,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </button>
 
-          {/* Desktop Navigation Links (Visible on lg: 1024px and above) */}
-          <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 shrink-0" aria-label="Main Navigation">
+          {/* Desktop Navigation Links (Center) */}
+          <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-2 flex-1 px-2" aria-label="Main Navigation">
             {primaryNavLinks.map((link) => {
               const isActive = currentRoute === link.route;
               return (
@@ -266,31 +255,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </nav>
 
-          {/* Right Actions: Quick Search + Donate CTA + Mobile Hamburger */}
+          {/* Right Actions: Support Utsav CTA + Mobile Hamburger */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Global Spotlight Search Trigger */}
-            <button
-              onClick={handleSearchClick}
-              aria-label="Open Universal Search"
-              className="px-2.5 py-2 sm:px-3 sm:py-2 rounded-xl bg-white border border-[#C9972B]/40 hover:border-[#D97706] text-[#78350F] shadow-2xs hover:bg-[#FEF3C7]/40 transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Search poojas, receipts, offerings, and committee contacts (⌘K)"
-            >
-              <Search className="w-4 h-4 text-[#D97706]" />
-              <span className="hidden xl:inline text-xs font-semibold">Search</span>
-              <kbd className="hidden xl:inline-block text-[10px] font-mono font-bold bg-[#FFF9ED] text-[#78350F]/75 px-1.5 py-0.5 rounded border border-[#C9972B]/30">
-                ⌘K
-              </kbd>
-            </button>
-
             {/* Prominent Golden Saffron Support CTA */}
             <button
               onClick={() => handleNav('/donate')}
-              className="relative overflow-hidden px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#D97706] via-[#B45309] to-[#7F1D1D] text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg hover:brightness-105 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer"
+              className="relative overflow-hidden px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#D97706] via-[#B45309] to-[#7F1D1D] text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg hover:brightness-105 active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap cursor-pointer"
               aria-label="Offer Seva to Ganesh Utsav 2026"
             >
-              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white animate-pulse" />
-              <span className="hidden sm:inline">Support Utsav</span>
-              <span className="sm:hidden">Offer</span>
+              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white animate-pulse shrink-0" />
+              <span>Support Utsav</span>
             </button>
 
             {/* Mobile Menu Hamburger Toggle (Visible on < lg) */}
@@ -366,11 +340,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Verify Official Digital Receipt</span>
             </button>
             <button
-              onClick={() => handleNav('/admin')}
+              onClick={() => handleNav('/admin/login')}
               className="w-full text-left px-3.5 py-2 text-[#7F1D1D] font-bold flex items-center gap-2 hover:bg-[#7F1D1D]/10 rounded-xl cursor-pointer"
             >
               <UserCheck className="w-4 h-4 shrink-0" />
-              <span>{currentUser ? `Admin Portal (${currentUser.name})` : 'Committee Member Portal'}</span>
+              <span>{currentUser ? `Admin Portal (${currentUser.name})` : 'Committee Portal'}</span>
             </button>
           </div>
         </div>
