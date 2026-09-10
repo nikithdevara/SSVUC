@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Cinzel', serif;
+  --font-devanagari: 'Noto Serif Devanagari', serif;
+
+  --color-saffron: #D97706;
+  --color-saffron-light: #F59E0B;
+  --color-saffron-dark: #B45309;
+  --color-maroon: #7F1D1D;
+  --color-maroon-dark: #450A0A;
+  --color-ivory: #FFF9ED;
+  --color-ivory-light: #FFFCF7;
+  --color-ivory-dark: #FDF6E2;
+  --color-temple-green: #166534;
+  --color-gold: #C9972B;
+  --color-gold-light: #EAB308;
+  --color-charcoal: #292524;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: #FFF9ED;
+    color: #292524;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FFF9ED;
+}
+::-webkit-scrollbar-thumb {
+  background: #D97706/40;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D97706;
+}
+
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 8mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print,
+  nav,
+  footer,
+  aside,
+  header {
+    display: none !important;
+  }
+
+  body {
+    background: #FFFDF7 !important;
+    color: #292524 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* When printing receipt modal, hide all background containers & tables */
+  body.printing-receipt #root > div > *:not(:has(#printable-receipt-card)),
+  body.printing-receipt main > *:not(:has(#printable-receipt-card)),
+  body.printing-receipt nav,
+  body.printing-receipt footer,
+  body.printing-receipt aside,
+  body.printing-receipt header,
+  body.printing-receipt .admin-sidebar,
+  body.printing-receipt .admin-header {
+    display: none !important;
+  }
+
+  /* De-position modal backdrop for seamless single-page document flow */
+  .receipt-modal-backdrop {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+    height: auto !important;
+    inset: auto !important;
+    display: block !important;
+  }
+
+  .receipt-modal-container {
+    padding: 0 !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  #printable-receipt-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border-width: 3px !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}

@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data;
+    }
+    
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserData().role == 'SUPER_ADMIN';
+    }
+    
+    function isTreasurer() {
+      return isAuthenticated() && (getUserData().role == 'TREASURER' || getUserData().role == 'SUPER_ADMIN');
+    }
+    
+    function isCommitteeAdmin() {
+      return isAuthenticated() && (getUserData().role == 'COMMITTEE_ADMIN' || getUserData().role == 'TREASURER' || getUserData().role == 'SUPER_ADMIN');
+    }
+
+    // Public Collections - Read-Only for Public, Write for Committee Admins
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    match /events/{docId} {
+      allow read: if true;
+      allow write: if isCommitteeAdmin();
+    }
+
+    match /announcements/{docId} {
+      allow read: if true;
+      allow write: if isCommitteeAdmin();
+    }
+
+    match /gallery/{docId} {
+      allow read: if true;
+      allow write: if isCommitteeAdmin();
+    }
+
+    // Public Contact Inquiries
+    match /messages/{docId} {
+      // Anyone can submit a message
+      allow create: if request.resource.data.name is string && request.resource.data.phone is string;
+      // Only admins can view or update messages
+      allow read, update, delete: if isCommitteeAdmin();
+    }
+
+    // Monetary Donations
+    match /donations/{docId} {
+      // Public can only read approved donations (transparency portal)
+      allow read: if resource.data.status == 'Approved' || isCommitteeAdmin();
+      // Public donation intents can be created with pending status
+      allow create: if request.resource.data.amount is number && request.resource.data.amount > 0;
+      // Only treasurer or super admin can approve, reject, or modify donations
+      allow update, delete: if isTreasurer();
+    }
+
+    // Material Donations
+    match /materials/{docId} {
+      allow read: if resource.data.status == 'Approved' || isCommitteeAdmin();
+      allow create: if isCommitteeAdmin();
+      allow update, delete: if isTreasurer();
+    }
+
+    // Expenses - Strictly Restricted to Financial Officers
+    match /expenses/{docId} {
+      // Public can read approved expenses for festival financial transparency
+      allow read: if resource.data.status == 'Approved' || isTreasurer();
+      allow create, update: if isTreasurer();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Digital Receipts - Tamper-Proof Public Verification
+    match /receipts/{receiptId} {
+      // Anyone can read for receipt verification
+      allow read: if true;
+      // Only financial officers can create or void receipts
+      allow create, update: if isTreasurer();
+      // Physical deletion is strictly forbidden to prevent ledger tampering
+      allow delete: if false;
+    }
+
+    // Payment Gateway Logs & Reconciliation
+    match /payments/{paymentId} {
+      allow read, write: if isTreasurer();
+    }
+
+    // Audit Logs - Immutable Append-Only Ledger
+    match /audit_logs/{logId} {
+      allow read: if isTreasurer();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // strictly immutable audit trail
+    }
+
+    // Admin Users Management
+    match /admin_users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // Admin Notifications
+    match /notifications/{notificationId} {
+      allow read, update: if isCommitteeAdmin();
+      allow create: if isAuthenticated();
+      allow delete: if isSuperAdmin();
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Sri Siddhi Vinayaka Utsava Committee",
+  "description": "Official Digital Utsav & Financial Transparency Platform for Ganesh Utsav 2026, Gandhinagar Anjayya Colony, Anakapalle.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
