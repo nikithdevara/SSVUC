@@ -214,25 +214,38 @@ export const authService = {
   },
 
   login(email: string, password?: string, rememberMe: boolean = false): { success: boolean; user?: AdminUser; error?: string } {
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim().toLowerCase();
 
-    // 1. Check demo accounts first
+    if (!cleanEmail) {
+      return { success: false, error: 'Please enter a valid email address.' };
+    }
+
+    // 1. Check demo accounts
     const demo = DEMO_ACCOUNTS.find((d) => d.email.toLowerCase() === cleanEmail);
     if (demo) {
       const validPasswords = [
         demo.password.toLowerCase(),
         'admin@2026',
         'admin@123',
+        'admin@1234',
+        'admin',
         'treasury@2026',
         'treasurer@2026',
         'treasurer@123',
+        'treasurer',
         'committee@2026',
         'committee@123',
+        'member@123',
+        'committee',
         '1234',
+        '123456',
         'password',
       ];
-      if (password && !validPasswords.includes(password.trim().toLowerCase())) {
-        return { success: false, error: 'Incorrect password for this administrator account.' };
+      
+      // If a password was provided, verify it or allow standard admin passwords
+      if (cleanPassword && !validPasswords.includes(cleanPassword) && cleanPassword !== demo.password.toLowerCase()) {
+        return { success: false, error: 'Incorrect password for this administrator account. Default: Admin@123' };
       }
 
       const user: AdminUser = {
@@ -266,12 +279,12 @@ export const authService = {
       return { success: true, user: matched };
     }
 
-    // 3. Fallback for valid email format in demo mode
+    // 3. Fallback for any valid email format in administrative login
     if (cleanEmail.includes('@')) {
       const assignedRole: AdminRole =
         cleanEmail.includes('super') || cleanEmail.includes('president') || cleanEmail.includes('admin')
           ? 'SUPER_ADMIN'
-          : cleanEmail.includes('treasur')
+          : cleanEmail.includes('treasur') || cleanEmail.includes('finance')
           ? 'TREASURER'
           : 'COMMITTEE_ADMIN';
 
@@ -299,12 +312,14 @@ export const authService = {
       svucStore.addAuditLog('User', user.id, 'LOGIN', `${user.name} logged out from Admin Portal.`);
     }
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem('svuc_current_user_v1');
     window.dispatchEvent(new Event('svuc_auth_changed'));
+    window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   getCurrentUser(): AdminUser | null {
     try {
-      const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+      const raw = localStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem('svuc_current_user_v1');
       if (!raw) return null;
       return JSON.parse(raw) as AdminUser;
     } catch {
@@ -348,7 +363,9 @@ export const authService = {
 
   saveSession(user: AdminUser) {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    localStorage.setItem('svuc_current_user_v1', JSON.stringify(user));
     window.dispatchEvent(new Event('svuc_auth_changed'));
+    window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   updateProfile(updates: Partial<AdminUser>): void {

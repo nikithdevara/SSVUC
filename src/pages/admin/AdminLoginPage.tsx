@@ -30,20 +30,21 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // If already logged in, redirect to appropriate landing page
+    // If already logged in, redirect directly to dashboard
     if (authService.isAuthenticated()) {
-      const user = authService.getCurrentUser();
-      if (user?.role === 'COMMITTEE_ADMIN') {
-        onNavigate('/admin/messages');
-      } else {
-        onNavigate('/admin');
-      }
+      onNavigate('/admin/dashboard');
     }
     const remembered = authService.getRememberedEmail();
     if (remembered) {
       setEmail(remembered);
     }
   }, [onNavigate]);
+
+  const selectQuickAccount = (quickEmail: string, quickPass: string) => {
+    setEmail(quickEmail);
+    setPassword(quickPass);
+    setError(null);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +54,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
     try {
       const res = await login(email.trim(), password);
       if (res.success) {
-        const user = authService.getCurrentUser();
-        if (user?.role === 'COMMITTEE_ADMIN') {
-          onNavigate('/admin/messages');
-        } else {
-          onNavigate('/admin');
-        }
+        onNavigate('/admin/dashboard');
       } else {
         setError(res.error || 'Authentication failed. Please verify your credentials and try again.');
       }
@@ -155,6 +151,48 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
               <p className="text-xs text-stone-400 mt-1 leading-relaxed">
                 Sign in with your registered committee credentials to access the financial ledger, seva registries, and administration tools.
               </p>
+            </div>
+
+            {/* Quick Demo Credentials Chips */}
+            <div className="mb-5 p-3 rounded-xl bg-stone-900/90 border border-stone-800">
+              <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider block mb-2">
+                Quick Select Role / Demo Accounts:
+              </span>
+              <div className="grid grid-cols-3 gap-1.5 text-center">
+                <button
+                  type="button"
+                  onClick={() => selectQuickAccount('superadmin@utsav.org', 'Admin@123')}
+                  className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+                    email === 'superadmin@utsav.org'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                      : 'bg-stone-800/80 border-stone-700/80 text-stone-300 hover:bg-stone-800 hover:text-amber-200'
+                  }`}
+                >
+                  👑 Super Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectQuickAccount('treasurer@utsav.org', 'Treasurer@123')}
+                  className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+                    email === 'treasurer@utsav.org'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                      : 'bg-stone-800/80 border-stone-700/80 text-stone-300 hover:bg-stone-800 hover:text-amber-200'
+                  }`}
+                >
+                  💰 Treasurer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectQuickAccount('committee@utsav.org', 'Member@123')}
+                  className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+                    email === 'committee@utsav.org'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                      : 'bg-stone-800/80 border-stone-700/80 text-stone-300 hover:bg-stone-800 hover:text-amber-200'
+                  }`}
+                >
+                  📋 Committee
+                </button>
+              </div>
             </div>
 
             {/* Error Message */}

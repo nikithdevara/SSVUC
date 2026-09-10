@@ -150,10 +150,6 @@ function AppContent() {
     const renderAdminModule = () => {
       // Base route or dashboard
       if (currentRoute === '/admin' || currentRoute === '/admin/dashboard') {
-        const user = authService.getCurrentUser();
-        if (user?.role === 'COMMITTEE_ADMIN') {
-          return <AdminMessagesPage />;
-        }
         return <AdminDashboard onNavigate={navigate} />;
       }
 

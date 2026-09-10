@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { SacredGaneshaEmblem } from './CulturalMotifs';
 import { svucStore } from '../../services/store';
+import { authService } from '../../services/authService';
 
 interface NavbarProps {
   currentRoute: string;
@@ -36,7 +37,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const currentUser = svucStore.getCurrentUser();
+  const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser() || svucStore.getCurrentUser());
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setCurrentUser(authService.getCurrentUser() || svucStore.getCurrentUser());
+    };
+    window.addEventListener('svuc_auth_changed', handleAuthChange);
+    window.addEventListener('svuc_store_updated', handleAuthChange);
+    return () => {
+      window.removeEventListener('svuc_auth_changed', handleAuthChange);
+      window.removeEventListener('svuc_store_updated', handleAuthChange);
+    };
+  }, []);
 
   const handleSearchClick = () => {
     if (onOpenCommandPalette) {
@@ -130,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {currentUser ? (
               <button
-                onClick={() => handleNav('/admin')}
+                onClick={() => handleNav('/admin/dashboard')}
                 className="hover:text-[#FDE68A] flex items-center gap-1.5 transition-colors font-bold text-[#FFFBEB] cursor-pointer"
               >
                 <UserCheck className="w-3.5 h-3.5 text-[#F59E0B] shrink-0" />
@@ -138,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             ) : (
               <button
-                onClick={() => handleNav('/admin')}
+                onClick={() => handleNav('/admin/login')}
                 className="hover:text-[#FDE68A] opacity-90 hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer"
               >
                 <span className="hidden sm:inline">Committee Login</span>
