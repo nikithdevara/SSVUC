@@ -50,7 +50,7 @@ export const donationsService = {
     return svucStore.getDonations().find((d) => d.id === id || d.receiptId === id);
   },
 
-  create(data: {
+  async create(data: {
     donorName: string;
     anonymous: boolean;
     amount: number;
@@ -61,7 +61,7 @@ export const donationsService = {
     gothram?: string;
     date?: string;
     status?: Donation['status'];
-  }): { donation: Donation; receipt: Receipt } {
+  }): Promise<{ donation: Donation; receipt: Receipt }> {
     const donations = svucStore.getDonations();
     const sequence = donations.length + 1;
     const year = '2026';
@@ -112,16 +112,20 @@ export const donationsService = {
     };
 
     const updated = [newDonation, ...donations];
-    localStorage.setItem('svuc_donations_v1', JSON.stringify(updated));
+    svucStore.saveDonations(updated);
 
     const receipts = svucStore.getReceipts();
-    localStorage.setItem('svuc_receipts_v1', JSON.stringify([newReceipt, ...receipts]));
+    svucStore.saveReceipts([newReceipt, ...receipts]);
 
     if (isFirebaseConfigured() && db) {
-      const cleanDon = cleanForFirebase(newDonation);
-      const cleanRec = cleanForFirebase(newReceipt);
-      setDoc(doc(db, COLLECTIONS.DONATIONS, newDonation.id), cleanDon, { merge: true }).catch(console.error);
-      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true }).catch(console.error);
+      try {
+        const cleanDon = cleanForFirebase(newDonation);
+        const cleanRec = cleanForFirebase(newReceipt);
+        await setDoc(doc(db, COLLECTIONS.DONATIONS, newDonation.id), cleanDon, { merge: true });
+        await setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true });
+      } catch (err) {
+        console.error('[Firestore Donation Create Error]', err);
+      }
     }
 
     auditService.logAction(
@@ -135,11 +139,11 @@ export const donationsService = {
     return { donation: newDonation, receipt: newReceipt };
   },
 
-  update(
+  async update(
     id: string,
     updates: Partial<Donation>,
     reason?: string
-  ): { success: boolean; donation?: Donation; error?: string } {
+  ): Promise<{ success: boolean; donation?: Donation; error?: string }> {
     const list = svucStore.getDonations();
     let index = list.findIndex((d) => d.id === id || d.receiptId === id);
 
@@ -179,18 +183,20 @@ export const donationsService = {
     };
 
     list[index] = updated;
-    localStorage.setItem('svuc_donations_v1', JSON.stringify(list));
+    svucStore.saveDonations(list);
 
     if (isFirebaseConfigured() && db) {
-      const cleanData = cleanForFirebase(updated);
-      setDoc(doc(db, COLLECTIONS.DONATIONS, id), cleanData, { merge: true }).catch((err) => {
-        console.warn('[Firestore Donation Update Error]', err);
-      });
-      if (original.id && original.id !== id) {
-        setDoc(doc(db, COLLECTIONS.DONATIONS, original.id), cleanData, { merge: true }).catch(console.error);
-      }
-      if (original.receiptId && original.receiptId !== id) {
-        setDoc(doc(db, COLLECTIONS.DONATIONS, original.receiptId), cleanData, { merge: true }).catch(console.error);
+      try {
+        const cleanData = cleanForFirebase(updated);
+        await setDoc(doc(db, COLLECTIONS.DONATIONS, id), cleanData, { merge: true });
+        if (original.id && original.id !== id) {
+          await setDoc(doc(db, COLLECTIONS.DONATIONS, original.id), cleanData, { merge: true });
+        }
+        if (original.receiptId && original.receiptId !== id) {
+          await setDoc(doc(db, COLLECTIONS.DONATIONS, original.receiptId), cleanData, { merge: true });
+        }
+      } catch (err) {
+        console.error('[Firestore Donation Update Error]', err);
       }
     }
 
@@ -220,10 +226,14 @@ export const donationsService = {
             ? `SVUC-${id.replace('DON-', '')}-DECLINED`
             : `SVUC-${id.replace('DON-', '')}-PENDING`,
         };
-        localStorage.setItem('svuc_receipts_v1', JSON.stringify(receipts));
+        svucStore.saveReceipts(receipts);
         if (isFirebaseConfigured() && db) {
-          const cleanRec = cleanForFirebase(receipts[rIdx]);
-          setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true }).catch(console.error);
+          try {
+            const cleanRec = cleanForFirebase(receipts[rIdx]);
+            await setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true });
+          } catch (err) {
+            console.error('[Firestore Receipt Update Error]', err);
+          }
         }
       }
     }
@@ -246,9 +256,9 @@ export const donationsService = {
     return { success: true, donation: updated };
   },
 
-  approve(id: string): { success: boolean; donation?: Donation } {
+  async approve(id: string): Promise<{ success: boolean; donation?: Donation }> {
     const currentUser = authService.getCurrentUser();
-    const res = this.update(
+    const res = await this.update(
       id,
       {
         status: 'Approved',
@@ -263,9 +273,9 @@ export const donationsService = {
     return res;
   },
 
-  reject(id: string, reason: string): { success: boolean; donation?: Donation } {
+  async reject(id: string, reason: string): Promise<{ success: boolean; donation?: Donation }> {
     const currentUser = authService.getCurrentUser();
-    const res = this.update(
+    const res = await this.update(
       id,
       {
         status: 'Declined',
@@ -279,22 +289,26 @@ export const donationsService = {
     return res;
   },
 
-  decline(id: string, reason: string): { success: boolean; donation?: Donation } {
+  async decline(id: string, reason: string): Promise<{ success: boolean; donation?: Donation }> {
     return this.reject(id, reason);
   },
 
-  archive(id: string, reason?: string): { success: boolean } {
-    const res = this.update(id, { status: 'Archived' }, reason || 'Archived record');
+  async archive(id: string, reason?: string): Promise<{ success: boolean }> {
+    const res = await this.update(id, { status: 'Archived' }, reason || 'Archived record');
     if (res.success) {
       auditService.logAction('Donation', id, 'ARCHIVE', `Donation ${id} marked as archived/void.`);
     }
     return { success: res.success };
   },
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     svucStore.deleteDonation(id);
     if (isFirebaseConfigured() && db) {
-      deleteDoc(doc(db, COLLECTIONS.DONATIONS, id)).catch(console.error);
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.DONATIONS, id));
+      } catch (err) {
+        console.error('[Firestore Donation Delete Error]', err);
+      }
     }
     return true;
   },
@@ -309,7 +323,7 @@ export const materialsService = {
     return svucStore.getMaterials().find((m) => m.id === id || m.receiptId === id);
   },
 
-  create(data: {
+  async create(data: {
     donorName: string;
     anonymous: boolean;
     materialName: string;
@@ -320,7 +334,7 @@ export const materialsService = {
     notes?: string;
     date?: string;
     status?: MaterialDonation['status'];
-  }): { material: MaterialDonation; receipt: Receipt } {
+  }): Promise<{ material: MaterialDonation; receipt: Receipt }> {
     const list = svucStore.getMaterials();
     const sequence = list.length + 1;
     const year = '2026';
@@ -371,15 +385,19 @@ export const materialsService = {
       status: status === 'Approved' ? 'VERIFIED' : status === 'Pending' ? 'PENDING' : 'REVOKED',
     };
 
-    localStorage.setItem('svuc_materials_v1', JSON.stringify([newMaterial, ...list]));
+    svucStore.saveMaterials([newMaterial, ...list]);
     const receipts = svucStore.getReceipts();
-    localStorage.setItem('svuc_receipts_v1', JSON.stringify([newReceipt, ...receipts]));
+    svucStore.saveReceipts([newReceipt, ...receipts]);
 
     if (isFirebaseConfigured() && db) {
-      const cleanMat = cleanForFirebase(newMaterial);
-      const cleanRec = cleanForFirebase(newReceipt);
-      setDoc(doc(db, COLLECTIONS.MATERIALS, newMaterial.id), cleanMat, { merge: true }).catch(console.error);
-      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true }).catch(console.error);
+      try {
+        const cleanMat = cleanForFirebase(newMaterial);
+        const cleanRec = cleanForFirebase(newReceipt);
+        await setDoc(doc(db, COLLECTIONS.MATERIALS, newMaterial.id), cleanMat, { merge: true });
+        await setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true });
+      } catch (err) {
+        console.error('[Firestore Material Create Error]', err);
+      }
     }
 
     auditService.logAction(
@@ -393,7 +411,7 @@ export const materialsService = {
     return { material: newMaterial, receipt: newReceipt };
   },
 
-  update(id: string, updates: Partial<MaterialDonation>, reason?: string) {
+  async update(id: string, updates: Partial<MaterialDonation>, reason?: string): Promise<{ success: boolean; material?: MaterialDonation; error?: string }> {
     const list = svucStore.getMaterials();
     let index = list.findIndex((m) => m.id === id || m.receiptId === id);
     let original: MaterialDonation;
@@ -426,13 +444,17 @@ export const materialsService = {
     };
 
     list[index] = updated;
-    localStorage.setItem('svuc_materials_v1', JSON.stringify(list));
+    svucStore.saveMaterials(list);
 
     if (isFirebaseConfigured() && db) {
-      const cleanMat = cleanForFirebase(updated);
-      setDoc(doc(db, COLLECTIONS.MATERIALS, id), cleanMat, { merge: true }).catch(console.error);
-      if (original.id && original.id !== id) {
-        setDoc(doc(db, COLLECTIONS.MATERIALS, original.id), cleanMat, { merge: true }).catch(console.error);
+      try {
+        const cleanMat = cleanForFirebase(updated);
+        await setDoc(doc(db, COLLECTIONS.MATERIALS, id), cleanMat, { merge: true });
+        if (original.id && original.id !== id) {
+          await setDoc(doc(db, COLLECTIONS.MATERIALS, original.id), cleanMat, { merge: true });
+        }
+      } catch (err) {
+        console.error('[Firestore Material Update Error]', err);
       }
     }
 
@@ -461,10 +483,14 @@ export const materialsService = {
             ? `SVUC-MAT-${id.replace('MAT-', '')}-DECLINED`
             : `SVUC-MAT-${id.replace('MAT-', '')}-PENDING`,
         };
-        localStorage.setItem('svuc_receipts_v1', JSON.stringify(receipts));
+        svucStore.saveReceipts(receipts);
         if (isFirebaseConfigured() && db) {
-          const cleanRec = cleanForFirebase(receipts[rIdx]);
-          setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true }).catch(console.error);
+          try {
+            const cleanRec = cleanForFirebase(receipts[rIdx]);
+            await setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true });
+          } catch (err) {
+            console.error('[Firestore Receipt Material Update Error]', err);
+          }
         }
       }
     }
@@ -483,9 +509,9 @@ export const materialsService = {
     return { success: true, material: updated };
   },
 
-  approve(id: string) {
+  async approve(id: string) {
     const currentUser = authService.getCurrentUser();
-    const res = this.update(
+    const res = await this.update(
       id,
       {
         status: 'Approved',
@@ -500,32 +526,35 @@ export const materialsService = {
     return res;
   },
 
-  reject(id: string, reason: string) {
+  async reject(id: string, reason: string) {
     const currentUser = authService.getCurrentUser();
-    const res = this.update(id, { status: 'Declined' }, reason || `Declined by ${currentUser?.name || 'Admin'}`);
+    const res = await this.update(id, { status: 'Declined' }, reason || `Declined by ${currentUser?.name || 'Admin'}`);
     if (res.success && res.material) {
       auditService.logAction('Material', id, 'REJECT', `Material contribution ${id} (${res.material.materialName}) declined. Reason: ${reason}`);
     }
     return res;
   },
 
-  decline(id: string, reason: string) {
+  async decline(id: string, reason: string) {
     return this.reject(id, reason);
   },
 
-  archive(id: string, reason?: string) {
+  async archive(id: string, reason?: string) {
     return this.update(id, { status: 'Archived' }, reason);
   },
 
-  delete(id: string) {
+  async delete(id: string) {
     svucStore.deleteMaterial(id);
     if (isFirebaseConfigured() && db) {
-      deleteDoc(doc(db, COLLECTIONS.MATERIALS, id)).catch(console.error);
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.MATERIALS, id));
+      } catch (err) {
+        console.error('[Firestore Material Delete Error]', err);
+      }
     }
     return true;
   },
 };
-
 
 export const expensesService = {
   getAll(): Expense[] {
@@ -536,7 +565,7 @@ export const expensesService = {
     return svucStore.getExpenses().find((e) => e.id === id);
   },
 
-  create(data: {
+  async create(data: {
     expenseName: string;
     category: Expense['category'];
     amount: number;
@@ -546,7 +575,7 @@ export const expensesService = {
     billUrl?: string;
     date?: string;
     status?: Expense['status'];
-  }): Expense {
+  }): Promise<Expense> {
     const list = svucStore.getExpenses();
     const sequence = list.length + 1;
     const year = '2026';
@@ -575,15 +604,16 @@ export const expensesService = {
       approvedAt: status === 'Approved' ? now.toISOString() : undefined,
     };
 
-    try {
-      localStorage.setItem('svuc_expenses_v1', JSON.stringify([newExpense, ...list]));
-    } catch (e) {
-      console.warn('[LocalStorage expenses write failed]', e);
-    }
+    svucStore.saveExpenses([newExpense, ...list]);
 
     if (isFirebaseConfigured() && db) {
-      const cleanExp = cleanForFirebase(newExpense);
-      setDoc(doc(db, COLLECTIONS.EXPENSES, newExpense.id), cleanExp, { merge: true }).catch(console.error);
+      try {
+        const cleanExp = cleanForFirebase(newExpense);
+        await setDoc(doc(db, COLLECTIONS.EXPENSES, newExpense.id), cleanExp, { merge: true });
+      } catch (err) {
+        console.error('[Firestore Expense Create Error]', err);
+        throw err;
+      }
     }
 
     auditService.logAction(
@@ -597,7 +627,7 @@ export const expensesService = {
     return newExpense;
   },
 
-  update(id: string, updates: Partial<Expense>, reason?: string) {
+  async update(id: string, updates: Partial<Expense>, reason?: string): Promise<{ success: boolean; expense?: Expense; error?: string }> {
     const list = svucStore.getExpenses();
     let index = list.findIndex((e) => e.id === id || e.receiptVoucherNo === id);
     let original: Expense;
@@ -634,17 +664,18 @@ export const expensesService = {
     };
 
     list[index] = updated;
-    try {
-      localStorage.setItem('svuc_expenses_v1', JSON.stringify(list));
-    } catch (e) {
-      console.warn('[LocalStorage expenses update failed]', e);
-    }
+    svucStore.saveExpenses(list);
 
     if (isFirebaseConfigured() && db) {
-      const cleanData = cleanForFirebase(updated);
-      setDoc(doc(db, COLLECTIONS.EXPENSES, id), cleanData, { merge: true }).catch(console.error);
-      if (original.id && original.id !== id) {
-        setDoc(doc(db, COLLECTIONS.EXPENSES, original.id), cleanData, { merge: true }).catch(console.error);
+      try {
+        const cleanData = cleanForFirebase(updated);
+        await setDoc(doc(db, COLLECTIONS.EXPENSES, id), cleanData, { merge: true });
+        if (original.id && original.id !== id) {
+          await setDoc(doc(db, COLLECTIONS.EXPENSES, original.id), cleanData, { merge: true });
+        }
+      } catch (err) {
+        console.error('[Firestore Expense Update Error]', err);
+        throw err;
       }
     }
 
@@ -666,7 +697,7 @@ export const expensesService = {
     return { success: true, expense: updated };
   },
 
-  approve(id: string) {
+  async approve(id: string) {
     const currentUser = authService.getCurrentUser();
     return this.update(
       id,
@@ -679,35 +710,39 @@ export const expensesService = {
     );
   },
 
-  reject(id: string, reason: string) {
+  async reject(id: string, reason: string) {
     return this.update(id, { status: 'Rejected' }, reason);
   },
 
-  archive(id: string, reason?: string) {
+  async archive(id: string, reason?: string) {
     return this.update(id, { status: 'Archived' }, reason);
   },
 
-  delete(id: string) {
+  async delete(id: string): Promise<boolean> {
     const list = svucStore.getExpenses();
     const target = list.find((e) => e.id === id || e.receiptVoucherNo === id);
     if (!target) {
       if (isFirebaseConfigured() && db) {
-        deleteDoc(doc(db, COLLECTIONS.EXPENSES, id)).catch(console.error);
+        try {
+          await deleteDoc(doc(db, COLLECTIONS.EXPENSES, id));
+        } catch (err) {
+          console.error('[Firestore Expense Delete Error]', err);
+        }
       }
       return true;
     }
 
     const filtered = list.filter((e) => e.id !== id && e.receiptVoucherNo !== id);
-    try {
-      localStorage.setItem('svuc_expenses_v1', JSON.stringify(filtered));
-    } catch (e) {
-      console.warn('[LocalStorage expenses delete failed]', e);
-    }
+    svucStore.saveExpenses(filtered);
 
     if (isFirebaseConfigured() && db) {
-      deleteDoc(doc(db, COLLECTIONS.EXPENSES, id)).catch(console.error);
-      if (target.id && target.id !== id) {
-        deleteDoc(doc(db, COLLECTIONS.EXPENSES, target.id)).catch(console.error);
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.EXPENSES, id));
+        if (target.id && target.id !== id) {
+          await deleteDoc(doc(db, COLLECTIONS.EXPENSES, target.id)).catch(console.error);
+        }
+      } catch (err) {
+        console.error('[Firestore Expense Delete Error]', err);
       }
     }
 
@@ -726,25 +761,33 @@ export const eventsService = {
     return svucStore.getEvents().find((e) => e.id === id);
   },
 
-  create(event: Omit<EventItem, 'id'>): EventItem {
+  async create(event: Omit<EventItem, 'id'>): Promise<EventItem> {
     const res = svucStore.addEvent(event);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.EVENTS, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.EVENTS, res.id), cleanForFirebase(res), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Event Create Error]', err);
+      }
     }
     return res;
   },
 
-  update(id: string, updates: Partial<EventItem>) {
+  async update(id: string, updates: Partial<EventItem>) {
     const list = svucStore.getEvents();
     const index = list.findIndex((e) => e.id === id);
     if (index === -1) return null;
 
     const updated = { ...list[index], ...updates };
     list[index] = updated;
-    localStorage.setItem('svuc_events_v1', JSON.stringify(list));
+    svucStore.saveEvents(list);
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.EVENTS, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.EVENTS, id), cleanForFirebase(updated), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Event Update Error]', err);
+      }
     }
 
     auditService.logAction('Event', id, 'UPDATE', `Updated festival event: ${updated.title}`);
@@ -752,10 +795,14 @@ export const eventsService = {
     return updated;
   },
 
-  delete(id: string) {
+  async delete(id: string) {
     svucStore.deleteEvent(id);
     if (isFirebaseConfigured() && db) {
-      deleteDoc(doc(db, COLLECTIONS.EVENTS, id)).catch(console.error);
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.EVENTS, id));
+      } catch (err) {
+        console.error('[Firestore Event Delete Error]', err);
+      }
     }
     return true;
   },
@@ -770,25 +817,33 @@ export const announcementsService = {
     return svucStore.getAnnouncements().find((a) => a.id === id);
   },
 
-  create(ann: Omit<Announcement, 'id' | 'date'>): Announcement {
+  async create(ann: Omit<Announcement, 'id' | 'date'>): Promise<Announcement> {
     const res = svucStore.addAnnouncement(ann);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, res.id), cleanForFirebase(res), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Announcement Create Error]', err);
+      }
     }
     return res;
   },
 
-  update(id: string, updates: Partial<Announcement>) {
+  async update(id: string, updates: Partial<Announcement>) {
     const list = svucStore.getAnnouncements();
     const index = list.findIndex((a) => a.id === id);
     if (index === -1) return null;
 
     const updated = { ...list[index], ...updates };
     list[index] = updated;
-    localStorage.setItem('svuc_announcements_v1', JSON.stringify(list));
+    svucStore.saveAnnouncements(list);
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id), cleanForFirebase(updated), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Announcement Update Error]', err);
+      }
     }
 
     auditService.logAction('Announcement', id, 'UPDATE', `Updated announcement: ${updated.title}`);
@@ -796,10 +851,14 @@ export const announcementsService = {
     return updated;
   },
 
-  delete(id: string) {
+  async delete(id: string) {
     svucStore.deleteAnnouncement(id);
     if (isFirebaseConfigured() && db) {
-      deleteDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id)).catch(console.error);
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id));
+      } catch (err) {
+        console.error('[Firestore Announcement Delete Error]', err);
+      }
     }
     return true;
   },
@@ -814,26 +873,34 @@ export const galleryService = {
     return svucStore.getGallery().find((g) => g.id === id);
   },
 
-  create(item: Omit<GalleryItem, 'id'>): GalleryItem {
+  async create(item: Omit<GalleryItem, 'id'>): Promise<GalleryItem> {
     const res = svucStore.addGalleryItem(item);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.GALLERY, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.GALLERY, res.id), cleanForFirebase(res), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Gallery Create Error]', err);
+      }
     }
     auditService.logAction('Gallery', res.id, 'CREATE', `Added photo to gallery: ${res.title} (${res.category})`);
     return res;
   },
 
-  update(id: string, updates: Partial<GalleryItem>) {
+  async update(id: string, updates: Partial<GalleryItem>) {
     const list = svucStore.getGallery();
     const index = list.findIndex((g) => g.id === id);
     if (index === -1) return null;
 
     const updated = { ...list[index], ...updates };
     list[index] = updated;
-    localStorage.setItem('svuc_gallery_v1', JSON.stringify(list));
+    svucStore.saveGallery(list);
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.GALLERY, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.GALLERY, id), cleanForFirebase(updated), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Gallery Update Error]', err);
+      }
     }
 
     auditService.logAction('Gallery', id, 'UPDATE', `Updated gallery image: ${updated.title}`);
@@ -841,21 +908,24 @@ export const galleryService = {
     return updated;
   },
 
-  delete(id: string) {
+  async delete(id: string) {
     svucStore.deleteGalleryItem(id);
     if (isFirebaseConfigured() && db) {
-      deleteDoc(doc(db, COLLECTIONS.GALLERY, id)).catch(console.error);
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.GALLERY, id));
+      } catch (err) {
+        console.error('[Firestore Gallery Delete Error]', err);
+      }
     }
     auditService.logAction('Gallery', id, 'DELETE', `Deleted gallery image ID ${id}`);
     return true;
   },
 
   reorder(items: GalleryItem[]) {
-    localStorage.setItem('svuc_gallery_v1', JSON.stringify(items));
+    svucStore.saveGallery(items);
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
-  // Mock upload behavior ready for Stage 4 Firebase Storage
   async uploadImage(file: File): Promise<string> {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -876,26 +946,34 @@ export const usersService = {
     return svucStore.getAdminUsers().find((u) => u.id === id);
   },
 
-  create(user: Omit<AdminUser, 'id' | 'lastLogin'>): AdminUser {
+  async create(user: Omit<AdminUser, 'id' | 'lastLogin'>): Promise<AdminUser> {
     const res = svucStore.addAdminUser(user);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.USERS, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.USERS, res.id), cleanForFirebase(res), { merge: true });
+      } catch (err) {
+        console.error('[Firestore User Create Error]', err);
+      }
     }
     auditService.logAction('User', res.id, 'CREATE', `Created admin account for ${res.name} (${res.role})`);
     return res;
   },
 
-  update(id: string, updates: Partial<AdminUser>) {
+  async update(id: string, updates: Partial<AdminUser>) {
     const list = svucStore.getAdminUsers();
     const index = list.findIndex((u) => u.id === id);
     if (index === -1) return null;
 
     const updated = { ...list[index], ...updates };
     list[index] = updated;
-    localStorage.setItem('svuc_admin_users_v1', JSON.stringify(list));
+    svucStore.saveAdminUsers(list);
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.USERS, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.USERS, id), cleanForFirebase(updated), { merge: true });
+      } catch (err) {
+        console.error('[Firestore User Update Error]', err);
+      }
     }
 
     auditService.logAction('User', id, 'UPDATE', `Modified user profile for ${updated.name}`);
@@ -903,20 +981,24 @@ export const usersService = {
     return updated;
   },
 
-  toggleStatus(id: string, newStatus: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') {
+  async toggleStatus(id: string, newStatus: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') {
     return this.update(id, { status: newStatus });
   },
 
-  delete(id: string) {
+  async delete(id: string) {
     const list = svucStore.getAdminUsers();
     const target = list.find((u) => u.id === id);
     if (!target) return false;
 
     const filtered = list.filter((u) => u.id !== id);
-    localStorage.setItem('svuc_admin_users_v1', JSON.stringify(filtered));
+    svucStore.saveAdminUsers(filtered);
 
     if (isFirebaseConfigured() && db) {
-      deleteDoc(doc(db, COLLECTIONS.USERS, id)).catch(console.error);
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.USERS, id));
+      } catch (err) {
+        console.error('[Firestore User Delete Error]', err);
+      }
     }
 
     auditService.logAction('User', id, 'DELETE', `Deleted admin user ${target.name} (${target.email})`);
@@ -932,19 +1014,27 @@ export const settingsService = {
     return svucStore.getSettings();
   },
 
-  updateSettings(newSettings: Partial<CommitteeSettings>) {
+  async updateSettings(newSettings: Partial<CommitteeSettings>) {
     const updated = svucStore.updateSettings(newSettings);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), cleanForFirebase(updated), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), cleanForFirebase(updated), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Settings Update Error]', err);
+      }
     }
     auditService.logAction('Settings', 'CFG-01', 'UPDATE', 'Updated committee and festival settings.');
     return updated;
   },
 
-  update(newSettings: Partial<CommitteeSettings>, reason?: string) {
+  async update(newSettings: Partial<CommitteeSettings>, reason?: string) {
     const updated = svucStore.updateSettings(newSettings);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), cleanForFirebase(updated), { merge: true }).catch(console.error);
+      try {
+        await setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), cleanForFirebase(updated), { merge: true });
+      } catch (err) {
+        console.error('[Firestore Settings Update Error]', err);
+      }
     }
     auditService.logAction(
       'Settings',
@@ -955,7 +1045,6 @@ export const settingsService = {
     return updated;
   },
 };
-
 
 export const auditService = {
   getAll(): AuditLog[] {
@@ -975,28 +1064,7 @@ export const auditService = {
     newValue?: string,
     reason?: string
   ) {
-    const logs = svucStore.getAuditLogs();
-    const currentUser = authService.getCurrentUser();
-    const actorName = currentUser ? currentUser.name : 'System / Online Devotee';
-    const actorRole = currentUser ? authService.getRoleLabel(currentUser.role) : 'Public';
-
-    const newLog: AuditLog = {
-      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      timestamp: new Date().toISOString(),
-      userName: actorName,
-      userRole: actorRole,
-      performedBy: actorName,
-      auditReason: reason,
-      action,
-      entity,
-      recordId,
-      details,
-      previousValue,
-      newValue,
-      reason,
-    };
-
-    localStorage.setItem('svuc_audit_logs_v1', JSON.stringify([newLog, ...logs.slice(0, 200)]));
+    svucStore.addAuditLog(entity, recordId, action, details, reason);
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 };

@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { DevotionalHeaderBadge, TraditionalDiya } from '../../components/common/CulturalMotifs';
 import { useToast } from '../../components/common/Toast';
+import { contactFirebaseService } from '../../services/firebase/firestoreService';
+import { svucStore } from '../../services/store';
 
 interface ContactPageProps {
   onNavigate: (route: string) => void;
@@ -50,7 +52,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) {
       showToast('Please fix the errors in the form', 'error');
@@ -58,10 +60,29 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
     }
 
     setStatus('submitting');
-    setTimeout(() => {
+    try {
+      const fullMessage = purpose ? `[${purpose}] ${message}` : message;
+      const created = await contactFirebaseService.submitMessage({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        message: fullMessage.trim(),
+      });
+
+      const currentMsgs = svucStore.getContactMessages();
+      svucStore.saveContactMessages([created, ...currentMsgs.filter((m) => m.id !== created.id)]);
+
       setStatus('success');
-      showToast('Message submitted successfully!', 'success');
-    }, 900);
+      showToast('Message submitted successfully! The committee will reach out to you.', 'success');
+      setName('');
+      setPhone('');
+      setEmail('');
+      setMessage('');
+    } catch (err: any) {
+      console.error('Failed to submit message:', err);
+      setStatus('error');
+      showToast(err?.message || 'Failed to submit message. Please try again.', 'error');
+    }
   };
 
   const handleDirections = () => {

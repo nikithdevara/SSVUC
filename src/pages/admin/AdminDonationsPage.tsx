@@ -143,13 +143,19 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
     setIsAddModalOpen(true);
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
+  const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = donationsService.create(formData);
-    setIsAddModalOpen(false);
-    refreshList();
-    // Prompt to view receipt immediately
-    setViewReceipt(res.donation);
+    try {
+      const res = await donationsService.create(formData);
+      setIsAddModalOpen(false);
+      refreshList();
+      showToast(`Donation ${res.donation.receiptId} recorded successfully!`, 'success');
+      // Prompt to view receipt immediately
+      setViewReceipt(res.donation);
+    } catch (err: any) {
+      console.error('Error creating donation:', err);
+      showToast(err?.message || 'Failed to record donation', 'error');
+    }
   };
 
   const handleOpenEdit = (donation: Donation) => {
@@ -168,81 +174,96 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    donationsService.update(
-      editTarget.id,
-      {
-        donorName: formData.donorName,
-        anonymous: formData.anonymous,
-        amount: Number(formData.amount),
-        paymentMethod: formData.paymentMethod,
-        phoneNumber: formData.phoneNumber,
-        email: formData.email,
-        gothram: formData.gothram,
-        notes: formData.notes,
-        status: formData.status,
-      },
-      editReason
-    );
-    setEditTarget(null);
-    refreshList();
+    try {
+      await donationsService.update(
+        editTarget.id,
+        {
+          donorName: formData.donorName,
+          anonymous: formData.anonymous,
+          amount: Number(formData.amount),
+          paymentMethod: formData.paymentMethod,
+          phoneNumber: formData.phoneNumber,
+          email: formData.email,
+          gothram: formData.gothram,
+          notes: formData.notes,
+          status: formData.status,
+        },
+        editReason
+      );
+      setEditTarget(null);
+      refreshList();
+      showToast(`Donation ${editTarget.receiptId} updated successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error updating donation:', err);
+      showToast(err?.message || 'Failed to update donation', 'error');
+    }
   };
 
-  const handleExecuteConfirm = () => {
+  const handleExecuteConfirm = async () => {
     if (!confirmAction) return;
     const { type, target } = confirmAction;
 
-    if (type === 'approve') {
-      donationsService.approve(target.id);
-      if (target.receiptId && target.receiptId !== target.id) {
-        donationsService.approve(target.receiptId);
+    try {
+      if (type === 'approve') {
+        await donationsService.approve(target.id);
+        if (target.receiptId && target.receiptId !== target.id) {
+          await donationsService.approve(target.receiptId);
+        }
+        setDonations((prev) =>
+          prev.map((d) =>
+            d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
+              ? { ...d, status: 'Approved', approvedBy: authService.getCurrentUser()?.name || 'Administrator', approvedAt: new Date().toISOString() }
+              : d
+          )
+        );
+        showToast(`Offering ${target.receiptId} approved successfully!`, 'success');
+      } else if (type === 'reject') {
+        await donationsService.reject(target.id, rejectionReason || 'Counter audit rejection');
+        if (target.receiptId && target.receiptId !== target.id) {
+          await donationsService.reject(target.receiptId, rejectionReason || 'Counter audit rejection');
+        }
+        setDonations((prev) =>
+          prev.map((d) =>
+            d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
+              ? { ...d, status: 'Declined', rejectionReason }
+              : d
+          )
+        );
+        showToast(`Offering ${target.receiptId} declined.`, 'info');
+      } else if (type === 'archive') {
+        await donationsService.archive(target.id, 'Administrative archive');
+        if (target.receiptId && target.receiptId !== target.id) {
+          await donationsService.archive(target.receiptId, 'Administrative archive');
+        }
+        setDonations((prev) =>
+          prev.map((d) =>
+            d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
+              ? { ...d, status: 'Archived' }
+              : d
+          )
+        );
+        showToast(`Offering ${target.receiptId} archived.`, 'info');
+      } else if (type === 'delete') {
+        await donationsService.delete(target.id);
+        if (target.receiptId && target.receiptId !== target.id) {
+          await donationsService.delete(target.receiptId);
+        }
+        setDonations((prev) =>
+          prev.filter((d) => d.id !== target.id && d.receiptId !== target.receiptId && (!target.receiptId || d.id !== target.receiptId))
+        );
+        showToast(`Offering ${target.receiptId} deleted.`, 'info');
       }
-      setDonations((prev) =>
-        prev.map((d) =>
-          d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
-            ? { ...d, status: 'Approved', approvedBy: authService.getCurrentUser()?.name || 'Administrator', approvedAt: new Date().toISOString() }
-            : d
-        )
-      );
-    } else if (type === 'reject') {
-      donationsService.reject(target.id, rejectionReason || 'Counter audit rejection');
-      if (target.receiptId && target.receiptId !== target.id) {
-        donationsService.reject(target.receiptId, rejectionReason || 'Counter audit rejection');
-      }
-      setDonations((prev) =>
-        prev.map((d) =>
-          d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
-            ? { ...d, status: 'Declined', rejectionReason }
-            : d
-        )
-      );
-    } else if (type === 'archive') {
-      donationsService.archive(target.id, 'Administrative archive');
-      if (target.receiptId && target.receiptId !== target.id) {
-        donationsService.archive(target.receiptId, 'Administrative archive');
-      }
-      setDonations((prev) =>
-        prev.map((d) =>
-          d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
-            ? { ...d, status: 'Archived' }
-            : d
-        )
-      );
-    } else if (type === 'delete') {
-      donationsService.delete(target.id);
-      if (target.receiptId && target.receiptId !== target.id) {
-        donationsService.delete(target.receiptId);
-      }
-      setDonations((prev) =>
-        prev.filter((d) => d.id !== target.id && d.receiptId !== target.receiptId && (!target.receiptId || d.id !== target.receiptId))
-      );
+    } catch (err: any) {
+      console.error(`Error executing ${type} on donation:`, err);
+      showToast(err?.message || `Failed to ${type} donation`, 'error');
+    } finally {
+      setConfirmAction(null);
+      setRejectionReason('');
+      refreshList();
     }
-
-    setConfirmAction(null);
-    setRejectionReason('');
-    refreshList();
   };
 
   const handleExportCSV = () => {

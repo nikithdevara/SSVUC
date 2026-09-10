@@ -216,25 +216,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
 
   const stats = canViewFinance ? financialStats : operationalStats;
 
-  const handleExecuteAction = () => {
+  const handleExecuteAction = async () => {
     if (!actionModal) return;
     const { action, type, id } = actionModal;
-    if (action === 'approve') {
-      if (type === 'donation') donationsService.approve(id);
-      else if (type === 'expense') expensesService.approve(id);
-      else if (type === 'material') materialsService.approve(id);
-    } else if (action === 'reject') {
-      if (type === 'donation') donationsService.reject(id, actionReason || 'Declined from dashboard queue');
-      else if (type === 'expense') expensesService.reject(id, actionReason || 'Declined from dashboard queue');
-      else if (type === 'material') materialsService.reject(id, actionReason || 'Declined from dashboard queue');
-    } else if (action === 'delete') {
-      if (type === 'donation') donationsService.delete(id);
-      else if (type === 'expense') expensesService.delete(id);
-      else if (type === 'material') materialsService.delete(id);
+    try {
+      if (action === 'approve') {
+        if (type === 'donation') await donationsService.approve(id);
+        else if (type === 'expense') await expensesService.approve(id);
+        else if (type === 'material') await materialsService.approve(id);
+      } else if (action === 'reject') {
+        if (type === 'donation') await donationsService.reject(id, actionReason || 'Declined from dashboard queue');
+        else if (type === 'expense') await expensesService.reject(id, actionReason || 'Declined from dashboard queue');
+        else if (type === 'material') await materialsService.reject(id, actionReason || 'Declined from dashboard queue');
+      } else if (action === 'delete') {
+        if (type === 'donation') await donationsService.delete(id);
+        else if (type === 'expense') await expensesService.delete(id);
+        else if (type === 'material') await materialsService.delete(id);
+      }
+    } catch (err: any) {
+      console.error('Error executing dashboard action:', err);
+    } finally {
+      setActionModal(null);
+      setActionReason('');
+      refreshData();
     }
-    setActionModal(null);
-    setActionReason('');
-    refreshData();
   };
 
   const handleReplyWhatsApp = (msg: { phone?: string; name: string; message: string }) => {

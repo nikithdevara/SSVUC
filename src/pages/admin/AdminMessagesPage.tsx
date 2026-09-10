@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Mail,
   Search,
@@ -13,26 +13,79 @@ import {
 import { svucStore } from '../../services/store';
 import { ContactMessage } from '../../types';
 import { useToast } from '../../components/common/Toast';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
+import { COLLECTIONS } from '../../services/firebase/firestoreService';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 export const AdminMessagesPage: React.FC = () => {
   const { showToast } = useToast();
   const [messages, setMessages] = useState<ContactMessage[]>(() => svucStore.getContactMessages());
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    if (isFirebaseConfigured() && db) {
+      const unsub = onSnapshot(
+        collection(db, COLLECTIONS.CONTACT_MESSAGES),
+        (snap) => {
+          if (!snap.empty) {
+            const list: ContactMessage[] = snap.docs.map((d) => ({
+              id: d.id,
+              ...(d.data() as any),
+            }));
+            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setMessages(list);
+            svucStore.saveContactMessages(list);
+          }
+        },
+        (err) => {
+          console.warn('[ContactMessages] Realtime error:', err);
+        }
+      );
+      return () => unsub();
+    }
+  }, []);
+
   const refreshList = () => {
     setMessages(svucStore.getContactMessages());
   };
 
-  const handleToggleRead = (id: string) => {
+  const handleToggleRead = async (id: string) => {
     const list = svucStore.getContactMessages();
     const item = list.find((m) => m.id === id);
     if (item) {
-      item.read = !item.read;
-      item.status = item.read ? 'read' : 'unread';
+      const newRead = !item.read;
+      item.read = newRead;
+      item.status = newRead ? 'read' : 'unread';
       svucStore.saveContactMessages(list);
-      refreshList();
-      showToast(`Marked message as ${item.read ? 'read' : 'unread'}`, 'info');
+      setMessages([...list]);
+
+      if (isFirebaseConfigured() && db) {
+        try {
+          await updateDoc(doc(db, COLLECTIONS.CONTACT_MESSAGES, id), {
+            read: newRead,
+            status: newRead ? 'read' : 'unread',
+          });
+        } catch (err) {
+          console.warn('[ContactMessages] Firestore update error:', err);
+        }
+      }
+      showToast(`Marked message as ${newRead ? 'read' : 'unread'}`, 'info');
     }
+  };
+
+  const handleDeleteMessage = async (id: string) => {
+    const list = svucStore.getContactMessages().filter((m) => m.id !== id);
+    svucStore.saveContactMessages(list);
+    setMessages(list);
+
+    if (isFirebaseConfigured() && db) {
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.CONTACT_MESSAGES, id));
+      } catch (err) {
+        console.warn('[ContactMessages] Firestore delete error:', err);
+      }
+    }
+    showToast('Inquiry message removed', 'info');
   };
 
   const handleReplyWhatsApp = (msg: ContactMessage) => {
@@ -154,6 +207,14 @@ export const AdminMessagesPage: React.FC = () => {
                   }`}
                 >
                   {msg.read ? 'Mark Unread' : 'Mark Read'}
+                </button>
+
+                <button
+                  onClick={() => handleDeleteMessage(msg.id)}
+                  className="p-1.5 rounded-xl text-stone-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors cursor-pointer"
+                  title="Delete message"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

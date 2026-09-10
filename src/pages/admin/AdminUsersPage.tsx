@@ -18,6 +18,7 @@ import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminTable, Column } from '../../components/admin/AdminTable';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { ConfirmationModal } from '../../components/admin/ConfirmationModal';
+import { useToast } from '../../components/common/Toast';
 
 interface AdminUsersPageProps {
   onNavigate: (route: string) => void;
@@ -25,7 +26,8 @@ interface AdminUsersPageProps {
 }
 
 export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ onNavigate }) => {
-  const [users, setUsers] = useState<AdminUser[]>(adminUserService.getAll());
+  const { showToast } = useToast();
+  const [users, setUsers] = useState<AdminUser[]>(() => adminUserService.getAll());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [statusToggleTarget, setStatusToggleTarget] = useState<AdminUser | null>(null);
@@ -37,12 +39,18 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ onNavigate }) =>
     email: '',
     role: 'COMMITTEE_ADMIN' as AdminRole,
     phone: '',
-    status: 'ACTIVE' as AdminUser['status'],
+    status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
   });
 
   const refreshList = () => {
     setUsers(adminUserService.getAll());
   };
+
+  useEffect(() => {
+    const handleUpdate = () => refreshList();
+    window.addEventListener('svuc_store_updated', handleUpdate);
+    return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+  }, []);
 
   const handleOpenAdd = () => {
     setFormData({
@@ -55,17 +63,23 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ onNavigate }) =>
     setIsAddModalOpen(true);
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
+  const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    adminUserService.create({
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-      phone: formData.phone,
-      status: formData.status,
-    });
-    setIsAddModalOpen(false);
-    refreshList();
+    try {
+      await adminUserService.create({
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        phone: formData.phone,
+        status: formData.status,
+      });
+      setIsAddModalOpen(false);
+      refreshList();
+      showToast(`User ${formData.name} added successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error creating user:', err);
+      showToast(err?.message || 'Failed to add user', 'error');
+    }
   };
 
   const handleOpenEdit = (u: AdminUser) => {
@@ -79,36 +93,48 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ onNavigate }) =>
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    adminUserService.update(editTarget.id, {
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-      phone: formData.phone,
-      status: formData.status,
-    });
-    const current = authService.getCurrentUser();
-    if (current && (current.id === editTarget.id || current.email === editTarget.email)) {
-      authService.updateProfile({
+    try {
+      await adminUserService.update(editTarget.id, {
         name: formData.name,
         email: formData.email,
         role: formData.role,
         phone: formData.phone,
         status: formData.status,
       });
+      const current = authService.getCurrentUser();
+      if (current && (current.id === editTarget.id || current.email === editTarget.email)) {
+        authService.updateProfile({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          phone: formData.phone,
+          status: formData.status,
+        });
+      }
+      setEditTarget(null);
+      refreshList();
+      showToast(`User ${formData.name} updated successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error updating user:', err);
+      showToast(err?.message || 'Failed to update user', 'error');
     }
-    setEditTarget(null);
-    refreshList();
   };
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     if (!statusToggleTarget) return;
-    const newStatus = statusToggleTarget.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    adminUserService.toggleStatus(statusToggleTarget.id, newStatus);
-    setStatusToggleTarget(null);
-    refreshList();
+    try {
+      const newStatus = statusToggleTarget.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      await adminUserService.toggleStatus(statusToggleTarget.id, newStatus);
+      setStatusToggleTarget(null);
+      refreshList();
+      showToast(`User status changed to ${newStatus}`, 'info');
+    } catch (err: any) {
+      console.error('Error toggling user status:', err);
+      showToast(err?.message || 'Failed to toggle status', 'error');
+    }
   };
 
   const renderRoleBadge = (role: AdminRole) => {

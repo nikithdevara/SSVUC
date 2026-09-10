@@ -24,7 +24,7 @@ import {
   initialSettings,
 } from '../data/mockData';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   DONATIONS: 'svuc_donations_2026_clean',
   MATERIALS: 'svuc_materials_2026_clean',
   EXPENSES: 'svuc_expenses_2026_clean',
@@ -40,32 +40,8 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'svuc_notifications_2026_clean',
 };
 
-// Purge legacy mock/demo data from browser localStorage for a fresh start
-(function purgeLegacyData() {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  const legacyKeys = [
-    'svuc_donations_v1',
-    'svuc_materials_v1',
-    'svuc_expenses_v1',
-    'svuc_receipts_v1',
-    'svuc_events_v1',
-    'svuc_announcements_v1',
-    'svuc_gallery_v1',
-    'svuc_audit_logs_v1',
-    'svuc_contact_messages_2026',
-    'svuc_notifications_2026',
-    'svuc_payment_transactions_v1',
-    'svuc_payment_transactions_v2',
-  ];
-  legacyKeys.forEach((k) => {
-    try {
-      localStorage.removeItem(k);
-    } catch (_) {}
-  });
-})();
-
 // Helper to safely read from localStorage
-function getLocal<T>(key: string, fallback: T): T {
+export function getLocal<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
     if (raw === null || raw === undefined) return fallback;
@@ -77,7 +53,7 @@ function getLocal<T>(key: string, fallback: T): T {
   }
 }
 
-function setLocal<T>(key: string, data: T) {
+export function setLocal<T>(key: string, data: T) {
   try {
     localStorage.setItem(key, JSON.stringify(data));
     // Dispatch custom event to notify listeners
@@ -773,6 +749,48 @@ export const svucStore = {
   // --- Donations Persistence ---
   saveDonations(donations: Donation[]): void {
     setLocal(STORAGE_KEYS.DONATIONS, donations);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Expenses Persistence ---
+  saveExpenses(expenses: Expense[]): void {
+    setLocal(STORAGE_KEYS.EXPENSES, expenses);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Materials Persistence ---
+  saveMaterials(materials: MaterialDonation[]): void {
+    setLocal(STORAGE_KEYS.MATERIALS, materials);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Receipts Persistence ---
+  saveReceipts(receipts: Receipt[]): void {
+    setLocal(STORAGE_KEYS.RECEIPTS, receipts);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Events Persistence ---
+  saveEvents(events: EventItem[]): void {
+    setLocal(STORAGE_KEYS.EVENTS, events);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Announcements Persistence ---
+  saveAnnouncements(announcements: Announcement[]): void {
+    setLocal(STORAGE_KEYS.ANNOUNCEMENTS, announcements);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Gallery Persistence ---
+  saveGallery(gallery: GalleryItem[]): void {
+    setLocal(STORAGE_KEYS.GALLERY, gallery);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Admin Users Persistence ---
+  saveAdminUsers(users: AdminUser[]): void {
+    setLocal(STORAGE_KEYS.USERS, users);
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 

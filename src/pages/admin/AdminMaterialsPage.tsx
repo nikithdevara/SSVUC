@@ -130,13 +130,21 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
     setIsAddModalOpen(true);
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = materialsService.create(formData);
-    setIsAddModalOpen(false);
-    refreshList();
-    setViewReceipt(res.material);
+    try {
+      const res = await materialsService.create(formData);
+      setIsAddModalOpen(false);
+      refreshList();
+      showToast(`Material pledge ${res.material.receiptId} recorded successfully!`, 'success');
+      setViewReceipt(res.material);
+    } catch (err: any) {
+      console.error('Error creating material pledge:', err);
+      showToast(err?.message || 'Failed to record material pledge', 'error');
+    }
   };
+
+  const handleSaveAdd = handleCreate;
 
   const handleOpenEdit = (item: MaterialDonation) => {
     setEditTarget(item);
@@ -154,45 +162,60 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    materialsService.update(
-      editTarget.id,
-      {
-        donorName: formData.donorName,
-        anonymous: formData.anonymous,
-        materialName: formData.materialName,
-        category: formData.category,
-        quantity: Number(formData.quantity),
-        unit: formData.unit,
-        phoneNumber: formData.phoneNumber,
-        notes: formData.notes,
-        status: formData.status,
-      },
-      actionReason
-    );
-    setEditTarget(null);
-    refreshList();
+    try {
+      await materialsService.update(
+        editTarget.id,
+        {
+          donorName: formData.donorName,
+          anonymous: formData.anonymous,
+          materialName: formData.materialName,
+          category: formData.category,
+          quantity: Number(formData.quantity),
+          unit: formData.unit,
+          phoneNumber: formData.phoneNumber,
+          notes: formData.notes,
+          status: formData.status,
+        },
+        actionReason
+      );
+      setEditTarget(null);
+      refreshList();
+      showToast(`Material pledge ${editTarget.receiptId} updated successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error updating material pledge:', err);
+      showToast(err?.message || 'Failed to update material pledge', 'error');
+    }
   };
 
-  const handleExecuteConfirm = () => {
+  const handleExecuteConfirm = async () => {
     if (!confirmAction) return;
     const { type, target } = confirmAction;
 
-    if (type === 'approve') {
-      materialsService.approve(target.id);
-    } else if (type === 'reject') {
-      materialsService.reject(target.id, actionReason || 'Declined pledge');
-    } else if (type === 'archive') {
-      materialsService.archive(target.id, 'Archived material pledge');
-    } else if (type === 'delete') {
-      materialsService.delete(target.id);
+    try {
+      if (type === 'approve') {
+        await materialsService.approve(target.id);
+        showToast(`Material pledge ${target.receiptId} verified & accepted!`, 'success');
+      } else if (type === 'reject') {
+        await materialsService.reject(target.id, actionReason || 'Declined pledge');
+        showToast(`Material pledge ${target.receiptId} declined.`, 'info');
+      } else if (type === 'archive') {
+        await materialsService.archive(target.id, 'Archived material pledge');
+        showToast(`Material pledge ${target.receiptId} archived.`, 'info');
+      } else if (type === 'delete') {
+        await materialsService.delete(target.id);
+        showToast(`Material pledge ${target.receiptId} deleted.`, 'info');
+      }
+    } catch (err: any) {
+      console.error(`Error executing ${type} on material:`, err);
+      showToast(err?.message || `Failed to ${type} material`, 'error');
+    } finally {
+      setConfirmAction(null);
+      setActionReason('');
+      refreshList();
     }
-
-    setConfirmAction(null);
-    setActionReason('');
-    refreshList();
   };
 
   const handleExportCSV = () => {

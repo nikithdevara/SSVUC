@@ -59,32 +59,36 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ onNavigate
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    settingsService.update(
-      {
-        committeeName: formData.committeeName,
-        festivalName: formData.festivalName,
-        year: formData.year,
-        festivalYear: formData.year,
-        festivalStartDate: formData.festivalStartDate,
-        festivalEndDate: formData.festivalEndDate,
-        location: formData.location,
-        targetBudget: Number(formData.targetBudget),
-        annadanamCapacity: Number(formData.annadanamCapacity),
-        upiId: formData.upiId,
-        contactPhone: formData.contactPhone,
-        contactEmail: formData.contactEmail,
-        enablePublicTransparency: formData.enablePublicTransparency,
-        maintenanceMode: formData.maintenanceMode,
-        maintenanceMessage: formData.maintenanceMessage,
-        paymentEnvironment: formData.paymentEnvironment as any,
-        receiptPrefix: `SSV-${formData.year}-`,
-      },
-      'Updated committee configuration & financial thresholds'
-    );
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    try {
+      await settingsService.update(
+        {
+          committeeName: formData.committeeName,
+          festivalName: formData.festivalName,
+          year: formData.year,
+          festivalYear: formData.year,
+          festivalStartDate: formData.festivalStartDate,
+          festivalEndDate: formData.festivalEndDate,
+          location: formData.location,
+          targetBudget: Number(formData.targetBudget),
+          annadanamCapacity: Number(formData.annadanamCapacity),
+          upiId: formData.upiId,
+          contactPhone: formData.contactPhone,
+          contactEmail: formData.contactEmail,
+          enablePublicTransparency: formData.enablePublicTransparency,
+          maintenanceMode: formData.maintenanceMode,
+          maintenanceMessage: formData.maintenanceMessage,
+          paymentEnvironment: formData.paymentEnvironment as any,
+          receiptPrefix: `SSV-${formData.year}-`,
+        },
+        'Updated committee configuration & financial thresholds'
+      );
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Error saving settings:', err);
+    }
   };
 
   return (

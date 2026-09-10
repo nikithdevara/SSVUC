@@ -191,7 +191,7 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
 
     try {
       setIsSubmitting(true);
-      const newVoucher = expensesService.create(formData);
+      const newVoucher = await expensesService.create(formData);
       
       // Immediately update local state for 0ms visual confirmation
       setExpenses((prev) => [newVoucher, ...prev.filter((e) => e.id !== newVoucher.id)]);
@@ -252,7 +252,7 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
 
     try {
       setIsSubmitting(true);
-      expensesService.update(
+      await expensesService.update(
         editTarget.id,
         {
           expenseName: formData.expenseName,
@@ -299,30 +299,35 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
     }
   };
 
-  const handleExecuteConfirm = () => {
+  const handleExecuteConfirm = async () => {
     if (!confirmAction) return;
     const { type, target } = confirmAction;
 
-    if (type === 'approve') {
-      expensesService.approve(target.id);
-      setExpenses((prev) => prev.map((e) => (e.id === target.id ? { ...e, status: 'Approved' } : e)));
-      showToast(`Voucher ${target.receiptVoucherNo} approved successfully!`, 'success');
-    } else if (type === 'reject') {
-      expensesService.reject(target.id, actionReason || 'Treasury disapproval');
-      setExpenses((prev) => prev.map((e) => (e.id === target.id ? { ...e, status: 'Rejected' } : e)));
-      showToast(`Voucher ${target.receiptVoucherNo} marked as disapproved.`, 'info');
-    } else if (type === 'archive') {
-      expensesService.archive(target.id, 'Voided voucher');
-      setExpenses((prev) => prev.map((e) => (e.id === target.id ? { ...e, status: 'Archived' } : e)));
-      showToast(`Voucher ${target.receiptVoucherNo} archived.`, 'info');
-    } else if (type === 'delete') {
-      expensesService.delete(target.id);
-      setExpenses((prev) => prev.filter((e) => e.id !== target.id));
-      showToast(`Voucher ${target.receiptVoucherNo} deleted.`, 'info');
+    try {
+      if (type === 'approve') {
+        await expensesService.approve(target.id);
+        setExpenses((prev) => prev.map((e) => (e.id === target.id ? { ...e, status: 'Approved' } : e)));
+        showToast(`Voucher ${target.receiptVoucherNo} approved successfully!`, 'success');
+      } else if (type === 'reject') {
+        await expensesService.reject(target.id, actionReason || 'Treasury disapproval');
+        setExpenses((prev) => prev.map((e) => (e.id === target.id ? { ...e, status: 'Rejected' } : e)));
+        showToast(`Voucher ${target.receiptVoucherNo} marked as disapproved.`, 'info');
+      } else if (type === 'archive') {
+        await expensesService.archive(target.id, 'Voided voucher');
+        setExpenses((prev) => prev.map((e) => (e.id === target.id ? { ...e, status: 'Archived' } : e)));
+        showToast(`Voucher ${target.receiptVoucherNo} archived.`, 'info');
+      } else if (type === 'delete') {
+        await expensesService.delete(target.id);
+        setExpenses((prev) => prev.filter((e) => e.id !== target.id));
+        showToast(`Voucher ${target.receiptVoucherNo} deleted.`, 'info');
+      }
+    } catch (err: any) {
+      console.error(`Error executing ${type} on voucher:`, err);
+      showToast(err?.message || `Failed to ${type} voucher`, 'error');
+    } finally {
+      setConfirmAction(null);
+      setActionReason('');
     }
-
-    setConfirmAction(null);
-    setActionReason('');
   };
 
   const handleExportCSV = () => {

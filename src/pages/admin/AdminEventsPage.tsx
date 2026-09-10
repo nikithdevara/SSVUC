@@ -70,21 +70,27 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
     setIsAddModalOpen(true);
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
+  const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    eventsService.create({
-      title: formData.title,
-      dayNumber: 1,
-      date: formData.date,
-      time: formData.time,
-      category: formData.category,
-      location: formData.location,
-      description: formData.description,
-      published: true,
-      highlights: formData.highlights.split(',').map((s) => s.trim()).filter(Boolean),
-    });
-    setIsAddModalOpen(false);
-    refreshList();
+    try {
+      await eventsService.create({
+        title: formData.title,
+        dayNumber: 1,
+        date: formData.date,
+        time: formData.time,
+        category: formData.category,
+        location: formData.location,
+        description: formData.description,
+        published: true,
+        highlights: formData.highlights.split(',').map((s) => s.trim()).filter(Boolean),
+      });
+      setIsAddModalOpen(false);
+      refreshList();
+      showToast('Event created successfully!', 'success');
+    } catch (err: any) {
+      console.error('Error creating event:', err);
+      showToast(err?.message || 'Failed to create event', 'error');
+    }
   };
 
   const handleOpenEdit = (item: EventItem) => {
@@ -100,27 +106,39 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    eventsService.update(editTarget.id, {
-      title: formData.title,
-      date: formData.date,
-      time: formData.time,
-      category: formData.category,
-      location: formData.location,
-      description: formData.description,
-      highlights: formData.highlights.split(',').map((s) => s.trim()).filter(Boolean),
-    });
-    setEditTarget(null);
-    refreshList();
+    try {
+      await eventsService.update(editTarget.id, {
+        title: formData.title,
+        date: formData.date,
+        time: formData.time,
+        category: formData.category,
+        location: formData.location,
+        description: formData.description,
+        highlights: formData.highlights.split(',').map((s) => s.trim()).filter(Boolean),
+      });
+      setEditTarget(null);
+      refreshList();
+      showToast('Event updated successfully!', 'success');
+    } catch (err: any) {
+      console.error('Error updating event:', err);
+      showToast(err?.message || 'Failed to update event', 'error');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    eventsService.delete(deleteTarget.id);
-    setDeleteTarget(null);
-    refreshList();
+    try {
+      await eventsService.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      refreshList();
+      showToast('Event deleted successfully!', 'info');
+    } catch (err: any) {
+      console.error('Error deleting event:', err);
+      showToast(err?.message || 'Failed to delete event', 'error');
+    }
   };
 
   return (

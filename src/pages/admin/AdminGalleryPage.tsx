@@ -62,11 +62,17 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
     }
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
+  const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    galleryService.create(formData);
-    setIsAddModalOpen(false);
-    refreshList();
+    try {
+      await galleryService.create(formData);
+      setIsAddModalOpen(false);
+      refreshList();
+      showToast('Media item added to gallery!', 'success');
+    } catch (err: any) {
+      console.error('Error adding gallery item:', err);
+      showToast(err?.message || 'Failed to add media item', 'error');
+    }
   };
 
   const handleOpenEdit = (item: GalleryItem) => {
@@ -80,19 +86,31 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    galleryService.update(editTarget.id, formData);
-    setEditTarget(null);
-    refreshList();
+    try {
+      await galleryService.update(editTarget.id, formData);
+      setEditTarget(null);
+      refreshList();
+      showToast('Gallery item updated successfully!', 'success');
+    } catch (err: any) {
+      console.error('Error updating gallery item:', err);
+      showToast(err?.message || 'Failed to update gallery item', 'error');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    galleryService.delete(deleteTarget.id);
-    setDeleteTarget(null);
-    refreshList();
+    try {
+      await galleryService.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      refreshList();
+      showToast('Gallery item removed!', 'info');
+    } catch (err: any) {
+      console.error('Error deleting gallery item:', err);
+      showToast(err?.message || 'Failed to delete gallery item', 'error');
+    }
   };
 
   return (

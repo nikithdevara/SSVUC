@@ -70,11 +70,17 @@ export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ 
     setIsAddModalOpen(true);
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
+  const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    announcementsService.create(formData);
-    setIsAddModalOpen(false);
-    refreshList();
+    try {
+      await announcementsService.create(formData);
+      setIsAddModalOpen(false);
+      refreshList();
+      showToast('Announcement published successfully!', 'success');
+    } catch (err: any) {
+      console.error('Error creating announcement:', err);
+      showToast(err?.message || 'Failed to publish announcement', 'error');
+    }
   };
 
   const handleOpenEdit = (item: Announcement) => {
@@ -89,19 +95,31 @@ export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ 
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    announcementsService.update(editTarget.id, formData);
-    setEditTarget(null);
-    refreshList();
+    try {
+      await announcementsService.update(editTarget.id, formData);
+      setEditTarget(null);
+      refreshList();
+      showToast('Announcement updated successfully!', 'success');
+    } catch (err: any) {
+      console.error('Error updating announcement:', err);
+      showToast(err?.message || 'Failed to update announcement', 'error');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    announcementsService.delete(deleteTarget.id);
-    setDeleteTarget(null);
-    refreshList();
+    try {
+      await announcementsService.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      refreshList();
+      showToast('Announcement deleted successfully!', 'info');
+    } catch (err: any) {
+      console.error('Error deleting announcement:', err);
+      showToast(err?.message || 'Failed to delete announcement', 'error');
+    }
   };
 
   return (
