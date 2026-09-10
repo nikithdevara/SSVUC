@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType, isFirebaseConfigured } from '../../lib/firebase';
 import { MaterialDonation, Receipt } from '../../types';
-import { COLLECTIONS, generateSafeReceiptNumber, auditFirebaseService, notificationsFirebaseService } from './firestoreService';
+import { COLLECTIONS, generateSafeReceiptNumber, auditFirebaseService, notificationsFirebaseService, cleanForFirebase } from './firestoreService';
 import { svucStore } from '../store';
 
 export const materialsFirebaseService = {
@@ -169,19 +169,19 @@ export const materialsFirebaseService = {
           const matRef = doc(db, COLLECTIONS.MATERIALS, materialId);
           const recRef = doc(db, COLLECTIONS.RECEIPTS, receiptNumber);
 
-          transaction.set(matRef, {
+          transaction.set(matRef, cleanForFirebase({
             ...newMaterial,
             publicVisibility: true,
             archived: false,
             serverCreatedAt: serverTimestamp(),
             serverUpdatedAt: serverTimestamp(),
-          });
+          }));
 
-          transaction.set(recRef, {
+          transaction.set(recRef, cleanForFirebase({
             ...newReceipt,
             serverCreatedAt: serverTimestamp(),
             serverUpdatedAt: serverTimestamp(),
-          });
+          }));
         });
 
         if (newMaterial.status === 'Pending') {
@@ -230,12 +230,13 @@ export const materialsFirebaseService = {
 
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, COLLECTIONS.MATERIALS, id), {
+        const payload = cleanForFirebase({
           ...updates,
           updatedBy,
           updatedAt: now,
           serverUpdatedAt: serverTimestamp(),
         });
+        await updateDoc(doc(db, COLLECTIONS.MATERIALS, id), payload);
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `${COLLECTIONS.MATERIALS}/${id}`);
       }

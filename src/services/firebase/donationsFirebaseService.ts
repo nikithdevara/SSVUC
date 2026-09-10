@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType, isFirebaseConfigured } from '../../lib/firebase';
 import { Donation, Receipt } from '../../types';
-import { COLLECTIONS, generateSafeReceiptNumber, auditFirebaseService, notificationsFirebaseService } from './firestoreService';
+import { COLLECTIONS, generateSafeReceiptNumber, auditFirebaseService, notificationsFirebaseService, cleanForFirebase } from './firestoreService';
 import { svucStore } from '../store';
 
 export interface DonationFilterOptions {
@@ -235,20 +235,20 @@ export const donationsFirebaseService = {
           const donRef = doc(db, COLLECTIONS.DONATIONS, donationId);
           const recRef = doc(db, COLLECTIONS.RECEIPTS, receiptNumber);
 
-          transaction.set(donRef, {
+          transaction.set(donRef, cleanForFirebase({
             ...newDonation,
             publicVisibility: true,
             currency: 'INR',
             archived: false,
             serverCreatedAt: serverTimestamp(),
             serverUpdatedAt: serverTimestamp(),
-          });
+          }));
 
-          transaction.set(recRef, {
+          transaction.set(recRef, cleanForFirebase({
             ...newReceipt,
             serverCreatedAt: serverTimestamp(),
             serverUpdatedAt: serverTimestamp(),
-          });
+          }));
         });
 
         // Trigger in-app notification if pending
@@ -302,12 +302,13 @@ export const donationsFirebaseService = {
 
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, COLLECTIONS.DONATIONS, id), {
+        const payload = cleanForFirebase({
           ...updates,
           updatedBy,
           updatedAt: now,
           serverUpdatedAt: serverTimestamp(),
         });
+        await updateDoc(doc(db, COLLECTIONS.DONATIONS, id), payload);
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `${COLLECTIONS.DONATIONS}/${id}`);
       }

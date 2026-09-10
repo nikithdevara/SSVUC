@@ -47,25 +47,25 @@ export const TransparencyPage: React.FC<TransparencyPageProps> = ({ onNavigate }
 
     if (isFirebaseConfigured() && db) {
       try {
-        const donQ = query(collection(db, COLLECTIONS.DONATIONS), orderBy('date', 'desc'));
-        unsubDon = onSnapshot(donQ, (snap) => {
+        unsubDon = onSnapshot(collection(db, COLLECTIONS.DONATIONS), (snap) => {
           const liveDons = snap.docs
             .map((d) => ({ id: d.id, ...d.data() } as Donation))
             .filter((d) => d.status === 'Approved' || d.status === 'Verified');
+          liveDons.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
           setDonations(liveDons);
         }, (err) => console.warn('[Live Transparency Donations Stream]', err));
 
-        const expQ = query(collection(db, COLLECTIONS.EXPENSES), orderBy('date', 'desc'));
-        unsubExp = onSnapshot(expQ, (snap) => {
+        unsubExp = onSnapshot(collection(db, COLLECTIONS.EXPENSES), (snap) => {
           const liveExps = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+          liveExps.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
           setExpenses(liveExps);
         }, (err) => console.warn('[Live Transparency Expenses Stream]', err));
 
-        const matQ = query(collection(db, COLLECTIONS.MATERIALS), orderBy('date', 'desc'));
-        unsubMat = onSnapshot(matQ, (snap) => {
+        unsubMat = onSnapshot(collection(db, COLLECTIONS.MATERIALS), (snap) => {
           const liveMats = snap.docs
             .map((d) => ({ id: d.id, ...d.data() } as MaterialDonation))
             .filter((m) => m.status === 'Approved' || m.status === 'Verified');
+          liveMats.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
           setMaterials(liveMats);
         }, (err) => console.warn('[Live Transparency Materials Stream]', err));
       } catch (err) {

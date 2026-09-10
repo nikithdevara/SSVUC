@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType, isFirebaseConfigured } from '../../lib/firebase';
 import { Expense } from '../../types';
-import { COLLECTIONS, auditFirebaseService, notificationsFirebaseService } from './firestoreService';
+import { COLLECTIONS, auditFirebaseService, notificationsFirebaseService, cleanForFirebase } from './firestoreService';
 import { svucStore } from '../store';
 
 export const expensesFirebaseService = {
@@ -49,7 +49,7 @@ export const expensesFirebaseService = {
     return svucStore.getExpenses();
   },
 
-  async getPublicApprovedExpenses(): Promise<Expense[]> {
+  async getPublicExpenses(): Promise<Expense[]> {
     if (isFirebaseConfigured() && db) {
       try {
         const q = query(
@@ -67,9 +67,7 @@ export const expensesFirebaseService = {
       }
     }
 
-    return svucStore
-      .getExpenses()
-      .filter((e) => (e.status === 'Approved' || e.status === 'Paid') && (e as any).publicVisibility !== false);
+    return svucStore.getExpenses().filter((e) => e.status === 'Approved' || e.status === 'Paid');
   },
 
   async getExpense(id: string): Promise<Expense | undefined> {
@@ -95,14 +93,13 @@ export const expensesFirebaseService = {
     paymentMethod: Expense['paymentMethod'];
     billUrl?: string;
     billStoragePath?: string;
+    publicBillVisibility?: boolean;
     date?: string;
     status?: Expense['status'];
-    publicBillVisibility?: boolean;
   }): Promise<Expense> {
     const actor = auth?.currentUser;
     const localUser = svucStore.getCurrentUser();
-    const rawActor = actor?.displayName || localUser?.name;
-    const createdBy = rawActor && !/satyam|treasurer/i.test(rawActor) ? rawActor : 'Utsav Committee';
+    const createdBy = actor?.displayName || localUser?.name || 'Administrator';
     const now = new Date();
     const dateStr = data.date || now.toISOString().split('T')[0];
 
@@ -139,7 +136,7 @@ export const expensesFirebaseService = {
     if (isFirebaseConfigured() && db) {
       try {
         const expRef = doc(db, COLLECTIONS.EXPENSES, id);
-        await setDoc(expRef, {
+        const rawPayload = {
           ...newExpense,
           expenseId: id,
           currency: 'INR',
@@ -149,7 +146,8 @@ export const expensesFirebaseService = {
           archived: false,
           serverCreatedAt: serverTimestamp(),
           serverUpdatedAt: serverTimestamp(),
-        });
+        };
+        await setDoc(expRef, cleanForFirebase(rawPayload), { merge: true });
 
         if (newExpense.status === 'Pending') {
           await notificationsFirebaseService.createNotification({
@@ -201,12 +199,13 @@ export const expensesFirebaseService = {
 
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, COLLECTIONS.EXPENSES, id), {
+        const payload = cleanForFirebase({
           ...updates,
           updatedBy,
           updatedAt: now,
           serverUpdatedAt: serverTimestamp(),
         });
+        await updateDoc(doc(db, COLLECTIONS.EXPENSES, id), payload);
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `${COLLECTIONS.EXPENSES}/${id}`);
       }

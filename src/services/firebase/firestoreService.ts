@@ -51,6 +51,22 @@ export const COLLECTIONS = {
 } as const;
 
 /**
+ * Clean any undefined properties recursively to prevent Firestore SDK validation errors
+ */
+export function cleanForFirebase<T>(obj: T): any {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(cleanForFirebase);
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = cleanForFirebase(value);
+    }
+  }
+  return clean;
+}
+
+/**
  * Atomic Receipt Number generator using Firestore transaction
  * Example format: SSV-2026-D-00001 or SSV-2026-M-00001
  */

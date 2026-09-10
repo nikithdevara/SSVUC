@@ -196,12 +196,48 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
 
     if (type === 'approve') {
       donationsService.approve(target.id);
+      if (target.receiptId && target.receiptId !== target.id) {
+        donationsService.approve(target.receiptId);
+      }
+      setDonations((prev) =>
+        prev.map((d) =>
+          d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
+            ? { ...d, status: 'Approved', approvedBy: authService.getCurrentUser()?.name || 'Administrator', approvedAt: new Date().toISOString() }
+            : d
+        )
+      );
     } else if (type === 'reject') {
       donationsService.reject(target.id, rejectionReason || 'Counter audit rejection');
+      if (target.receiptId && target.receiptId !== target.id) {
+        donationsService.reject(target.receiptId, rejectionReason || 'Counter audit rejection');
+      }
+      setDonations((prev) =>
+        prev.map((d) =>
+          d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
+            ? { ...d, status: 'Declined', rejectionReason }
+            : d
+        )
+      );
     } else if (type === 'archive') {
       donationsService.archive(target.id, 'Administrative archive');
+      if (target.receiptId && target.receiptId !== target.id) {
+        donationsService.archive(target.receiptId, 'Administrative archive');
+      }
+      setDonations((prev) =>
+        prev.map((d) =>
+          d.id === target.id || d.receiptId === target.receiptId || (target.receiptId && d.id === target.receiptId)
+            ? { ...d, status: 'Archived' }
+            : d
+        )
+      );
     } else if (type === 'delete') {
       donationsService.delete(target.id);
+      if (target.receiptId && target.receiptId !== target.id) {
+        donationsService.delete(target.receiptId);
+      }
+      setDonations((prev) =>
+        prev.filter((d) => d.id !== target.id && d.receiptId !== target.receiptId && (!target.receiptId || d.id !== target.receiptId))
+      );
     }
 
     setConfirmAction(null);
@@ -887,18 +923,27 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
           receipt={svucStore.getReceiptById(viewReceipt.receiptId) || svucStore.getReceiptById(viewReceipt.id)}
           onApprove={(id) => {
             donationsService.approve(viewReceipt.id);
+            if (viewReceipt.receiptId && viewReceipt.receiptId !== viewReceipt.id) {
+              donationsService.approve(viewReceipt.receiptId);
+            }
             refreshList();
-            const updated = svucStore.getDonations().find((d) => d.id === viewReceipt.id);
-            setViewReceipt(updated || null);
+            const updated = svucStore.getDonations().find((d) => d.id === viewReceipt.id || d.receiptId === viewReceipt.receiptId);
+            setViewReceipt(updated ? { ...updated, status: 'Approved' } : { ...viewReceipt, status: 'Approved' });
           }}
           onDecline={(id) => {
             donationsService.reject(viewReceipt.id, 'Declined by Admin/Treasurer from receipt view');
+            if (viewReceipt.receiptId && viewReceipt.receiptId !== viewReceipt.id) {
+              donationsService.reject(viewReceipt.receiptId, 'Declined by Admin/Treasurer from receipt view');
+            }
             refreshList();
-            const updated = svucStore.getDonations().find((d) => d.id === viewReceipt.id);
-            setViewReceipt(updated || null);
+            const updated = svucStore.getDonations().find((d) => d.id === viewReceipt.id || d.receiptId === viewReceipt.receiptId);
+            setViewReceipt(updated ? { ...updated, status: 'Declined' } : { ...viewReceipt, status: 'Declined' });
           }}
           onRemove={(id) => {
             donationsService.delete(viewReceipt.id);
+            if (viewReceipt.receiptId && viewReceipt.receiptId !== viewReceipt.id) {
+              donationsService.delete(viewReceipt.receiptId);
+            }
             refreshList();
             setViewReceipt(null);
           }}

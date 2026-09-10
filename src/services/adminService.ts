@@ -25,6 +25,22 @@ import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { COLLECTIONS } from './firebase/firestoreService';
 import { isFirebaseConfigured, db } from '../lib/firebase';
 
+/**
+ * Remove any undefined properties recursively to prevent Firestore SDK validation errors
+ */
+function cleanForFirebase<T>(obj: T): any {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(cleanForFirebase);
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = cleanForFirebase(value);
+    }
+  }
+  return clean;
+}
+
 export const donationsService = {
   getAll(): Donation[] {
     return svucStore.getDonations();
@@ -63,10 +79,10 @@ export const donationsService = {
       anonymous: data.anonymous,
       amount: Number(data.amount),
       paymentMethod: data.paymentMethod,
-      phoneNumber: data.phoneNumber,
-      email: data.email,
-      notes: data.notes,
-      gothram: data.gothram,
+      phoneNumber: data.phoneNumber || '',
+      email: data.email || '',
+      notes: data.notes || '',
+      gothram: data.gothram || '',
       date: dateStr,
       status,
       createdAt: now.toISOString(),
@@ -102,8 +118,10 @@ export const donationsService = {
     localStorage.setItem('svuc_receipts_v1', JSON.stringify([newReceipt, ...receipts]));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.DONATIONS, newDonation.id), newDonation, { merge: true }).catch(console.error);
-      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), newReceipt, { merge: true }).catch(console.error);
+      const cleanDon = cleanForFirebase(newDonation);
+      const cleanRec = cleanForFirebase(newReceipt);
+      setDoc(doc(db, COLLECTIONS.DONATIONS, newDonation.id), cleanDon, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true }).catch(console.error);
     }
 
     auditService.logAction(
@@ -123,10 +141,33 @@ export const donationsService = {
     reason?: string
   ): { success: boolean; donation?: Donation; error?: string } {
     const list = svucStore.getDonations();
-    const index = list.findIndex((d) => d.id === id);
-    if (index === -1) return { success: false, error: 'Donation record not found' };
+    let index = list.findIndex((d) => d.id === id || d.receiptId === id);
 
-    const original = list[index];
+    let original: Donation;
+    if (index === -1) {
+      original = {
+        id,
+        receiptId: updates.receiptId || id,
+        donorName: updates.donorName || 'Devotee',
+        anonymous: updates.anonymous || false,
+        amount: Number(updates.amount) || 0,
+        paymentMethod: updates.paymentMethod || 'UPI',
+        phoneNumber: updates.phoneNumber || '',
+        email: updates.email || '',
+        notes: updates.notes || '',
+        gothram: updates.gothram || '',
+        date: updates.date || new Date().toISOString().split('T')[0],
+        status: updates.status || 'Approved',
+        createdAt: updates.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: 'Devotee',
+      };
+      list.unshift(original);
+      index = 0;
+    } else {
+      original = list[index];
+    }
+
     const isFinancialChange =
       (updates.amount !== undefined && updates.amount !== original.amount) ||
       (updates.paymentMethod !== undefined && updates.paymentMethod !== original.paymentMethod);
@@ -141,7 +182,16 @@ export const donationsService = {
     localStorage.setItem('svuc_donations_v1', JSON.stringify(list));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.DONATIONS, id), updated, { merge: true }).catch(console.error);
+      const cleanData = cleanForFirebase(updated);
+      setDoc(doc(db, COLLECTIONS.DONATIONS, id), cleanData, { merge: true }).catch((err) => {
+        console.warn('[Firestore Donation Update Error]', err);
+      });
+      if (original.id && original.id !== id) {
+        setDoc(doc(db, COLLECTIONS.DONATIONS, original.id), cleanData, { merge: true }).catch(console.error);
+      }
+      if (original.receiptId && original.receiptId !== id) {
+        setDoc(doc(db, COLLECTIONS.DONATIONS, original.receiptId), cleanData, { merge: true }).catch(console.error);
+      }
     }
 
     // Also update associated receipt if amount or donor changed
@@ -172,7 +222,8 @@ export const donationsService = {
         };
         localStorage.setItem('svuc_receipts_v1', JSON.stringify(receipts));
         if (isFirebaseConfigured() && db) {
-          setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), receipts[rIdx], { merge: true }).catch(console.error);
+          const cleanRec = cleanForFirebase(receipts[rIdx]);
+          setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true }).catch(console.error);
         }
       }
     }
@@ -325,8 +376,10 @@ export const materialsService = {
     localStorage.setItem('svuc_receipts_v1', JSON.stringify([newReceipt, ...receipts]));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.MATERIALS, newMaterial.id), newMaterial, { merge: true }).catch(console.error);
-      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), newReceipt, { merge: true }).catch(console.error);
+      const cleanMat = cleanForFirebase(newMaterial);
+      const cleanRec = cleanForFirebase(newReceipt);
+      setDoc(doc(db, COLLECTIONS.MATERIALS, newMaterial.id), cleanMat, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true }).catch(console.error);
     }
 
     auditService.logAction(
@@ -342,10 +395,30 @@ export const materialsService = {
 
   update(id: string, updates: Partial<MaterialDonation>, reason?: string) {
     const list = svucStore.getMaterials();
-    const index = list.findIndex((m) => m.id === id);
-    if (index === -1) return { success: false, error: 'Material record not found' };
+    let index = list.findIndex((m) => m.id === id || m.receiptId === id);
+    let original: MaterialDonation;
+    if (index === -1) {
+      original = {
+        id,
+        receiptId: updates.receiptId || id,
+        donorName: updates.donorName || 'Devotee',
+        anonymous: updates.anonymous || false,
+        materialName: updates.materialName || 'Material Item',
+        category: updates.category || 'Other',
+        quantity: Number(updates.quantity) || 1,
+        unit: updates.unit || 'units',
+        date: updates.date || new Date().toISOString().split('T')[0],
+        status: updates.status || 'Approved',
+        createdAt: updates.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: 'Devotee',
+      };
+      list.unshift(original);
+      index = 0;
+    } else {
+      original = list[index];
+    }
 
-    const original = list[index];
     const updated: MaterialDonation = {
       ...original,
       ...updates,
@@ -356,7 +429,11 @@ export const materialsService = {
     localStorage.setItem('svuc_materials_v1', JSON.stringify(list));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.MATERIALS, id), updated, { merge: true }).catch(console.error);
+      const cleanMat = cleanForFirebase(updated);
+      setDoc(doc(db, COLLECTIONS.MATERIALS, id), cleanMat, { merge: true }).catch(console.error);
+      if (original.id && original.id !== id) {
+        setDoc(doc(db, COLLECTIONS.MATERIALS, original.id), cleanMat, { merge: true }).catch(console.error);
+      }
     }
 
     if (updates.status !== undefined || updates.quantity !== undefined || updates.materialName !== undefined) {
@@ -386,7 +463,8 @@ export const materialsService = {
         };
         localStorage.setItem('svuc_receipts_v1', JSON.stringify(receipts));
         if (isFirebaseConfigured() && db) {
-          setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), receipts[rIdx], { merge: true }).catch(console.error);
+          const cleanRec = cleanForFirebase(receipts[rIdx]);
+          setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true }).catch(console.error);
         }
       }
     }
@@ -504,7 +582,8 @@ export const expensesService = {
     }
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.EXPENSES, newExpense.id), newExpense, { merge: true }).catch(console.error);
+      const cleanExp = cleanForFirebase(newExpense);
+      setDoc(doc(db, COLLECTIONS.EXPENSES, newExpense.id), cleanExp, { merge: true }).catch(console.error);
     }
 
     auditService.logAction(
@@ -520,10 +599,30 @@ export const expensesService = {
 
   update(id: string, updates: Partial<Expense>, reason?: string) {
     const list = svucStore.getExpenses();
-    const index = list.findIndex((e) => e.id === id);
-    if (index === -1) return { success: false, error: 'Expense record not found' };
+    let index = list.findIndex((e) => e.id === id || e.receiptVoucherNo === id);
+    let original: Expense;
+    if (index === -1) {
+      original = {
+        id,
+        expenseName: updates.expenseName || 'Expense Item',
+        category: updates.category || 'Mandapam Setup',
+        amount: Number(updates.amount) || 0,
+        vendorName: updates.vendorName || 'Vendor',
+        description: updates.description || '',
+        paymentMethod: updates.paymentMethod || 'UPI',
+        receiptVoucherNo: updates.receiptVoucherNo || id,
+        date: updates.date || new Date().toISOString().split('T')[0],
+        status: updates.status || 'Approved',
+        createdAt: updates.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: 'Admin',
+      };
+      list.unshift(original);
+      index = 0;
+    } else {
+      original = list[index];
+    }
 
-    const original = list[index];
     const isFinancialChange =
       (updates.amount !== undefined && updates.amount !== original.amount) ||
       (updates.category !== undefined && updates.category !== original.category);
@@ -542,7 +641,11 @@ export const expensesService = {
     }
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.EXPENSES, id), updated, { merge: true }).catch(console.error);
+      const cleanData = cleanForFirebase(updated);
+      setDoc(doc(db, COLLECTIONS.EXPENSES, id), cleanData, { merge: true }).catch(console.error);
+      if (original.id && original.id !== id) {
+        setDoc(doc(db, COLLECTIONS.EXPENSES, original.id), cleanData, { merge: true }).catch(console.error);
+      }
     }
 
     const diff = isFinancialChange
@@ -586,10 +689,15 @@ export const expensesService = {
 
   delete(id: string) {
     const list = svucStore.getExpenses();
-    const target = list.find((e) => e.id === id);
-    if (!target) return false;
+    const target = list.find((e) => e.id === id || e.receiptVoucherNo === id);
+    if (!target) {
+      if (isFirebaseConfigured() && db) {
+        deleteDoc(doc(db, COLLECTIONS.EXPENSES, id)).catch(console.error);
+      }
+      return true;
+    }
 
-    const filtered = list.filter((e) => e.id !== id);
+    const filtered = list.filter((e) => e.id !== id && e.receiptVoucherNo !== id);
     try {
       localStorage.setItem('svuc_expenses_v1', JSON.stringify(filtered));
     } catch (e) {
@@ -598,6 +706,9 @@ export const expensesService = {
 
     if (isFirebaseConfigured() && db) {
       deleteDoc(doc(db, COLLECTIONS.EXPENSES, id)).catch(console.error);
+      if (target.id && target.id !== id) {
+        deleteDoc(doc(db, COLLECTIONS.EXPENSES, target.id)).catch(console.error);
+      }
     }
 
     auditService.logAction('Expense', id, 'DELETE', `Deleted expense voucher ${target.receiptVoucherNo} (₹${target.amount})`);
@@ -618,7 +729,7 @@ export const eventsService = {
   create(event: Omit<EventItem, 'id'>): EventItem {
     const res = svucStore.addEvent(event);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.EVENTS, res.id), res, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.EVENTS, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
     }
     return res;
   },
@@ -633,7 +744,7 @@ export const eventsService = {
     localStorage.setItem('svuc_events_v1', JSON.stringify(list));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.EVENTS, id), updated, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.EVENTS, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
     }
 
     auditService.logAction('Event', id, 'UPDATE', `Updated festival event: ${updated.title}`);
@@ -662,7 +773,7 @@ export const announcementsService = {
   create(ann: Omit<Announcement, 'id' | 'date'>): Announcement {
     const res = svucStore.addAnnouncement(ann);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, res.id), res, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
     }
     return res;
   },
@@ -677,7 +788,7 @@ export const announcementsService = {
     localStorage.setItem('svuc_announcements_v1', JSON.stringify(list));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id), updated, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
     }
 
     auditService.logAction('Announcement', id, 'UPDATE', `Updated announcement: ${updated.title}`);
@@ -706,7 +817,7 @@ export const galleryService = {
   create(item: Omit<GalleryItem, 'id'>): GalleryItem {
     const res = svucStore.addGalleryItem(item);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.GALLERY, res.id), res, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.GALLERY, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
     }
     auditService.logAction('Gallery', res.id, 'CREATE', `Added photo to gallery: ${res.title} (${res.category})`);
     return res;
@@ -722,7 +833,7 @@ export const galleryService = {
     localStorage.setItem('svuc_gallery_v1', JSON.stringify(list));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.GALLERY, id), updated, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.GALLERY, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
     }
 
     auditService.logAction('Gallery', id, 'UPDATE', `Updated gallery image: ${updated.title}`);
@@ -768,7 +879,7 @@ export const usersService = {
   create(user: Omit<AdminUser, 'id' | 'lastLogin'>): AdminUser {
     const res = svucStore.addAdminUser(user);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.USERS, res.id), res, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.USERS, res.id), cleanForFirebase(res), { merge: true }).catch(console.error);
     }
     auditService.logAction('User', res.id, 'CREATE', `Created admin account for ${res.name} (${res.role})`);
     return res;
@@ -784,7 +895,7 @@ export const usersService = {
     localStorage.setItem('svuc_admin_users_v1', JSON.stringify(list));
 
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.USERS, id), updated, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.USERS, id), cleanForFirebase(updated), { merge: true }).catch(console.error);
     }
 
     auditService.logAction('User', id, 'UPDATE', `Modified user profile for ${updated.name}`);
@@ -824,7 +935,7 @@ export const settingsService = {
   updateSettings(newSettings: Partial<CommitteeSettings>) {
     const updated = svucStore.updateSettings(newSettings);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), updated, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), cleanForFirebase(updated), { merge: true }).catch(console.error);
     }
     auditService.logAction('Settings', 'CFG-01', 'UPDATE', 'Updated committee and festival settings.');
     return updated;
@@ -833,7 +944,7 @@ export const settingsService = {
   update(newSettings: Partial<CommitteeSettings>, reason?: string) {
     const updated = svucStore.updateSettings(newSettings);
     if (isFirebaseConfigured() && db) {
-      setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), updated, { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.SETTINGS, 'general'), cleanForFirebase(updated), { merge: true }).catch(console.error);
     }
     auditService.logAction(
       'Settings',

@@ -15,6 +15,9 @@ import { svucStore } from '../../services/store';
 import { Donation, PaymentMethod } from '../../types';
 import { ReceiptModal } from '../../components/common/ReceiptModal';
 import { DevotionalHeaderBadge } from '../../components/common/CulturalMotifs';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { COLLECTIONS } from '../../services/firebase/firestoreService';
 
 interface DonationsPageProps {
   onNavigate: (route: string) => void;
@@ -31,13 +34,40 @@ export const DonationsPage: React.FC<DonationsPageProps> = ({ onNavigate }) => {
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
 
   useEffect(() => {
+    // 1. Initial load
+    setDonations(
+      svucStore.getDonations().filter((d) => d.status === 'Approved' || d.status === 'Verified')
+    );
+
+    // 2. Real-time Cloud Firestore live listener across all network devices
+    let unsubscribe: (() => void) | undefined;
+    if (isFirebaseConfigured() && db) {
+      try {
+        unsubscribe = onSnapshot(
+          collection(db, COLLECTIONS.DONATIONS),
+          (snapshot) => {
+            const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
+            list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+            const approved = list.filter((d) => d.status === 'Approved' || d.status === 'Verified');
+            setDonations(approved);
+          },
+          (err) => console.warn('[Live Donations Firestore Stream]', err)
+        );
+      } catch (err) {
+        console.warn('[Donations Firestore Listen Error]', err);
+      }
+    }
+
     const handleUpdate = () => {
       setDonations(
         svucStore.getDonations().filter((d) => d.status === 'Approved' || d.status === 'Verified')
       );
     };
     window.addEventListener('svuc_store_updated', handleUpdate);
-    return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+    return () => {
+      if (unsubscribe) unsubscribe();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   // Top Metrics Calculation

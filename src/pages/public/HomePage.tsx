@@ -91,11 +91,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
     if (isFirebaseConfigured() && db) {
       try {
-        const donQ = query(collection(db, COLLECTIONS.DONATIONS), orderBy('date', 'desc'));
-        unsubDonations = onSnapshot(donQ, (snap) => {
+        unsubDonations = onSnapshot(collection(db, COLLECTIONS.DONATIONS), (snap) => {
           const allDons = snap.docs
             .map((d) => ({ id: d.id, ...d.data() } as Donation))
             .filter((d) => d.status === 'Approved' || d.status === 'Verified');
+          allDons.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
           setDonations(allDons.slice(0, 4));
 
           // Real-time summary update
@@ -108,9 +108,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           }));
         }, (err) => console.warn('[Live Home Donations Stream]', err));
 
-        const expQ = query(collection(db, COLLECTIONS.EXPENSES), orderBy('date', 'desc'));
-        unsubExpenses = onSnapshot(expQ, (snap) => {
+        unsubExpenses = onSnapshot(collection(db, COLLECTIONS.EXPENSES), (snap) => {
           const allExps = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+          allExps.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
           setExpenses(allExps.slice(0, 4));
 
           const totalExp = allExps.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -122,19 +122,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           }));
         }, (err) => console.warn('[Live Home Expenses Stream]', err));
 
-        const evtQ = query(collection(db, COLLECTIONS.EVENTS), orderBy('dayNumber', 'asc'));
-        unsubEvents = onSnapshot(evtQ, (snap) => {
+        unsubEvents = onSnapshot(collection(db, COLLECTIONS.EVENTS), (snap) => {
           const allEvts = snap.docs
             .map((d) => ({ id: d.id, ...d.data() } as EventItem))
             .filter((e) => e.published !== false);
+          allEvts.sort((a, b) => (a.dayNumber || 0) - (b.dayNumber || 0));
           setEvents(allEvts.slice(0, 3));
         });
 
-        const annQ = query(collection(db, COLLECTIONS.ANNOUNCEMENTS), orderBy('date', 'desc'));
-        unsubAnnouncements = onSnapshot(annQ, (snap) => {
+        unsubAnnouncements = onSnapshot(collection(db, COLLECTIONS.ANNOUNCEMENTS), (snap) => {
           const allAnns = snap.docs
             .map((d) => ({ id: d.id, ...d.data() } as Announcement))
-            .filter((a) => a.published !== false);
+            .filter((a) => a.pinned || !a.expiresAt || new Date(a.expiresAt) >= new Date());
+          allAnns.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
           setAnnouncements(allAnns.slice(0, 3));
         });
       } catch (err) {
