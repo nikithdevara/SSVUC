@@ -142,8 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="hover:text-[#FDE68A] opacity-90 hover:opacity-100 transition-opacity flex items-center gap-1.5 font-medium cursor-pointer"
                 title="Access Committee Portal"
               >
-                <span className="hidden xs:inline sm:inline">Committee Portal</span>
-                <span className="xs:hidden">Portal</span>
+                <span>Committee Portal</span>
               </button>
             )}
           </div>
