@@ -18,6 +18,7 @@ export interface ReceiptModalProps {
   onApprove?: (id: string) => void;
   onDecline?: (id: string) => void;
   onRemove?: (id: string) => void;
+  showPrint?: boolean;
 }
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({
@@ -31,6 +32,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onApprove,
   onDecline,
   onRemove,
+  showPrint = false,
 }) => {
   const { showToast } = useToast();
   const settings = svucStore.getSettings();
@@ -499,13 +501,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <span>Remove</span>
         </button>
       )}
-      <button
-        onClick={handlePrint}
-        className="px-4 py-2.5 rounded-xl bg-[#7F1D1D] text-white font-bold text-xs hover:bg-[#991B1B] shadow-md flex items-center gap-1.5 cursor-pointer"
-      >
-        <Printer className="w-4 h-4" />
-        <span>Print Receipt</span>
-      </button>
+      {showPrint && (
+        <button
+          onClick={handlePrint}
+          className="px-4 py-2.5 rounded-xl bg-[#7F1D1D] text-white font-bold text-xs hover:bg-[#991B1B] shadow-md flex items-center gap-1.5 cursor-pointer"
+        >
+          <Printer className="w-4 h-4" />
+          <span>Print Receipt</span>
+        </button>
+      )}
       <button
         onClick={handleDownloadPdf}
         className="px-4 py-2.5 rounded-xl bg-[#166534] text-white font-bold text-xs hover:bg-[#15803d] shadow-md flex items-center gap-1.5 cursor-pointer"

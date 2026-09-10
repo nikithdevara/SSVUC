@@ -939,6 +939,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
       {viewReceipt && (
         <ReceiptModal
           isOpen={true}
+          showPrint={true}
           onClose={() => setViewReceipt(null)}
           donation={viewReceipt}
           receipt={svucStore.getReceiptById(viewReceipt.receiptId) || svucStore.getReceiptById(viewReceipt.id)}

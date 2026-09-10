@@ -9,7 +9,6 @@ import {
   Lock,
   Download,
   Share2,
-  Printer,
   Sparkles,
   Info,
   AlertTriangle,
@@ -664,14 +663,6 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
               >
                 <span>View Public Offerings Ledger</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => onNavigate('/admin/donations')}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-amber-600 bg-white hover:bg-amber-50 text-[#78350F] font-bold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4 text-[#D97706]" />
-                <span>Committee Admin Queue</span>
               </button>
             </div>
           </div>

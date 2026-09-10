@@ -307,7 +307,7 @@ export const AdminReceiptsPage: React.FC = () => {
 
       {/* Receipt Preview Modal */}
       {viewReceipt && (
-        <ReceiptModal receipt={viewReceipt} onClose={() => setViewReceipt(null)} />
+        <ReceiptModal receipt={viewReceipt} showPrint={true} onClose={() => setViewReceipt(null)} />
       )}
 
       {/* Void Modal (Section 33) */}

@@ -119,10 +119,10 @@ export const ReceiptDetailPage: React.FC<ReceiptDetailPageProps> = ({ receiptId,
             </div>
           </div>
 
-          {/* Full Printable Digital Receipt View if local object is also present */}
+          {/* Full Digital Receipt View if local object is also present */}
           {localReceipt && (
             <div className="pt-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Official Printable Voucher</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Official Digital Voucher</h3>
               <ReceiptModal receipt={localReceipt} standalone={true} />
             </div>
           )}

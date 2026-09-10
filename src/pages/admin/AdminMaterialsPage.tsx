@@ -886,6 +886,7 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
       {viewReceipt && (
         <ReceiptModal
           isOpen={true}
+          showPrint={true}
           onClose={() => setViewReceipt(null)}
           material={viewReceipt}
           receipt={svucStore.getReceiptById(viewReceipt.receiptId) || svucStore.getReceiptById(viewReceipt.id)}
