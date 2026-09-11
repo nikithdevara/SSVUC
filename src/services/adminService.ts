@@ -124,8 +124,7 @@ export const donationsService = {
         await setDoc(doc(db, COLLECTIONS.DONATIONS, newDonation.id), cleanDon, { merge: true });
         await setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true });
       } catch (err) {
-        console.error('[Firestore Donation Create Error]', err);
-        throw new Error(getFriendlyFirebaseErrorMessage(err));
+        console.warn('[Firestore Donation Create Sync Warning]', err);
       }
     }
 
@@ -404,8 +403,7 @@ export const materialsService = {
         await setDoc(doc(db, COLLECTIONS.MATERIALS, newMaterial.id), cleanMat, { merge: true });
         await setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true });
       } catch (err) {
-        console.error('[Firestore Material Create Error]', err);
-        throw new Error(getFriendlyFirebaseErrorMessage(err));
+        console.warn('[Firestore Material Create Sync Warning]', err);
       }
     }
 

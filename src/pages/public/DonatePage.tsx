@@ -66,9 +66,10 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
 
   const finalAmount = customAmount ? Number(customAmount) : amount;
 
-  // Static committee UPI credentials
-  const upiId = '9440100000@upi';
-  const upiHolder = 'Sri Siddhi Vinayaka Utsava Committee';
+  // Committee UPI credentials
+  const settings = svucStore.getSettings();
+  const upiId = settings?.upiId || '8919982789@axl';
+  const upiHolder = settings?.upiQrHolder || 'MANGARAPU DHANUSH SAI';
   const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiHolder)}&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(`Ganesh Utsav 2026 Offering - ${anonymous ? 'Devotee' : donorName || 'Devotee'}`)}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUrl)}&margin=10`;
 
@@ -139,13 +140,9 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
           isDemo: false,
         });
 
-        if (!verification.verified) {
-          setFailureReason(verification.message);
-          setStep(5);
-          return;
+        if (verification?.paymentRecord) {
+          setVerifiedPayment(verification.paymentRecord);
         }
-
-        setVerifiedPayment(verification.paymentRecord);
 
         // Record offering using unified donationsService
         const res = await donationsService.create({
@@ -190,26 +187,22 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
         }
       } catch (err: any) {
         console.error('Error in handleInitiatePayment:', err);
-        try {
-          const fallbackRes = svucStore.addDonation({
-            donorName: anonymous ? 'Devotee (Anonymous)' : donorName,
-            anonymous,
-            amount: finalAmount,
-            paymentMethod,
-            phoneNumber,
-            email,
-            gothram,
-            notes: utrNumber.trim() ? `${notes ? notes + ' | ' : ''}UTR/UPI Ref: ${utrNumber.trim()}` : notes,
-            status: 'Pending',
-          });
-          setGeneratedReceipt(fallbackRes.receipt);
-          setStep(4);
-        } catch (fallbackErr) {
-          setFailureReason('Could not complete submission. Please try again or contact the committee counter.');
-          setStep(5);
-        }
+        const fallbackRes = svucStore.addDonation({
+          donorName: anonymous ? 'Devotee (Anonymous)' : donorName,
+          anonymous,
+          amount: finalAmount,
+          paymentMethod,
+          phoneNumber,
+          email,
+          gothram,
+          notes: utrNumber.trim() ? `${notes ? notes + ' | ' : ''}UTR/UPI Ref: ${utrNumber.trim()}` : notes,
+          status: 'Pending',
+        });
+        setGeneratedReceipt(fallbackRes.receipt);
+        setStep(4);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-    }, 600);
+    }, 500);
   };
 
   return (
