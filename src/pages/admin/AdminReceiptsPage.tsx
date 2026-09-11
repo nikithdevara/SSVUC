@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Search,
@@ -13,13 +13,17 @@ import {
   RefreshCw,
   Eye,
   Filter,
+  Sparkles,
+  Clock,
 } from 'lucide-react';
-import { svucStore } from '../../services/store';
+import { svucStore, deduplicateReceipts } from '../../services/store';
 import { Receipt } from '../../types';
 import { ReceiptModal } from '../../components/common/ReceiptModal';
 import { useToast } from '../../components/common/Toast';
 import { pdfReceiptService } from '../../services/pdfReceiptService';
 import { authService } from '../../services/authService';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
+import { onSnapshot, collection } from 'firebase/firestore';
 
 export const AdminReceiptsPage: React.FC = () => {
   const { showToast } = useToast();
@@ -27,7 +31,7 @@ export const AdminReceiptsPage: React.FC = () => {
   const [receipts, setReceipts] = useState<Receipt[]>(() => svucStore.getReceipts());
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'MONETARY' | 'MATERIAL'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'VERIFIED' | 'VOID'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'VERIFIED' | 'PENDING' | 'VOID'>('ALL');
 
   // Modal states
   const [viewReceipt, setViewReceipt] = useState<Receipt | null>(null);
@@ -38,6 +42,35 @@ export const AdminReceiptsPage: React.FC = () => {
   const refreshList = () => {
     setReceipts(svucStore.getReceipts());
   };
+
+  useEffect(() => {
+    // 1. Initial load
+    setReceipts(svucStore.getReceipts());
+
+    // 2. Real-time Firestore live listener
+    let unsub: (() => void) | undefined;
+    if (isFirebaseConfigured() && db) {
+      try {
+        unsub = onSnapshot(collection(db, 'receipts'), (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
+          const currentLocal = svucStore.getReceipts();
+          const deduped = deduplicateReceipts([...live, ...currentLocal]);
+          setReceipts(deduped);
+        });
+      } catch (err) {
+        console.warn('[Receipts snapshot listener error]', err);
+      }
+    }
+
+    // 3. Instant local store event for 0ms immediate UI update
+    const handleUpdate = () => refreshList();
+    window.addEventListener('svuc_store_updated', handleUpdate);
+
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
+  }, []);
 
   const handleDownloadPdf = async (r: Receipt) => {
     try {
@@ -89,7 +122,11 @@ export const AdminReceiptsPage: React.FC = () => {
     const matchesType = typeFilter === 'ALL' || r.type === typeFilter;
     const matchesStatus =
       statusFilter === 'ALL' ||
-      (statusFilter === 'VOID' ? r.status === 'VOID' || r.status === 'REVOKED' : r.status === 'VERIFIED');
+      (statusFilter === 'VOID'
+        ? r.status === 'VOID' || r.status === 'REVOKED'
+        : statusFilter === 'PENDING'
+        ? r.status === 'PENDING'
+        : r.status === 'VERIFIED');
 
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -147,7 +184,7 @@ export const AdminReceiptsPage: React.FC = () => {
 
           {/* Status Filter */}
           <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
-            {(['ALL', 'VERIFIED', 'VOID'] as const).map((s) => (
+            {(['ALL', 'VERIFIED', 'PENDING', 'VOID'] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -155,7 +192,7 @@ export const AdminReceiptsPage: React.FC = () => {
                   statusFilter === s ? 'bg-white text-[#7F1D1D] shadow-xs' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                {s === 'ALL' ? 'All Status' : s === 'VERIFIED' ? 'Verified' : 'Void / Cancelled'}
+                {s === 'ALL' ? 'All Status' : s === 'VERIFIED' ? 'Verified' : s === 'PENDING' ? 'Pending' : 'Void / Cancelled'}
               </button>
             ))}
           </div>
@@ -330,7 +367,7 @@ export const AdminReceiptsPage: React.FC = () => {
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="e.g. Voucher cancelled due to wrong entry / transaction reversed / refund issued"
+                  placeholder="Enter reason for voiding receipt (e.g. Cancelled due to duplicate entry or transaction reversal)..."
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-red-500"

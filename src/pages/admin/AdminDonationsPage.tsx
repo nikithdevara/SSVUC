@@ -83,7 +83,8 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
       try {
         unsub = onSnapshot(collection(db, 'donations'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-          const deduped = deduplicateDonations(live);
+          const currentLocal = svucStore.getDonations();
+          const deduped = deduplicateDonations([...live, ...currentLocal]);
           setDonations(deduped);
         });
       } catch (err) {
@@ -221,11 +222,21 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
+    if (!formData.anonymous && !formData.donorName.trim()) {
+      showToast('Please enter the Devotee Name or mark as Anonymous', 'error');
+      return;
+    }
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      showToast('Please enter a valid offering amount', 'error');
+      return;
+    }
+
     try {
-      await donationsService.update(
+      setIsSubmitting(true);
+      const res = await donationsService.update(
         editTarget.id,
         {
-          donorName: formData.donorName,
+          donorName: formData.anonymous ? 'Devotee (Anonymous)' : formData.donorName,
           anonymous: formData.anonymous,
           amount: Number(formData.amount),
           paymentMethod: formData.paymentMethod,
@@ -237,12 +248,21 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
         },
         editReason
       );
+
+      // Immediately update local state
+      if (res.donation) {
+        setDonations((prev) =>
+          prev.map((d) => (d.id === editTarget.id || d.receiptId === editTarget.receiptId ? res.donation! : d))
+        );
+      }
+
       setEditTarget(null);
-      refreshList();
-      showToast(`Donation ${editTarget.receiptId} updated successfully!`, 'success');
+      showToast(`Offering ${editTarget.receiptId} updated successfully!`, 'success');
     } catch (err: any) {
       console.error('Error updating donation:', err);
-      showToast(err?.message || 'Failed to update donation', 'error');
+      showToast(err?.message || 'Failed to update offering', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -716,7 +736,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
                 required={!formData.anonymous}
                 value={formData.donorName}
                 disabled={formData.anonymous}
-                placeholder={formData.anonymous ? 'Anonymous Devotee' : 'e.g. Sri Ravi Kumar'}
+                placeholder={formData.anonymous ? 'Anonymous Devotee' : 'Enter devotee full name'}
                 onChange={(e) => setFormData({ ...formData, donorName: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden disabled:bg-stone-100"
               />
@@ -779,7 +799,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
               <input
                 type="tel"
                 value={formData.phoneNumber}
-                placeholder="+91 94401 XXXXX"
+                placeholder="Enter 10-digit mobile number"
                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -790,7 +810,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
               <input
                 type="text"
                 value={formData.gothram}
-                placeholder="e.g. Kasyapa, Bharadwaja"
+                placeholder="Enter gothram (if applicable)"
                 onChange={(e) => setFormData({ ...formData, gothram: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -802,7 +822,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
             <textarea
               rows={2}
               value={formData.notes}
-              placeholder="e.g., Dedicated for Day 3 Annadanam prasadam"
+              placeholder="Enter devotional prayer, sankalpam, or offering notes..."
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />
@@ -821,7 +841,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
               disabled={isSubmitting}
               className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {isSubmitting ? 'Recording Offering...' : 'Record Offering'}
+              {isSubmitting ? 'Recording Offering...' : 'Save Offering & Issue Receipt'}
             </button>
           </div>
         </form>
@@ -838,13 +858,17 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
           <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">Donor Name</label>
+                <label className="block font-semibold text-stone-700 mb-1">
+                  Donor Name {!formData.anonymous && <span className="text-red-500">*</span>}
+                </label>
                 <input
                   type="text"
-                  required
-                  value={formData.donorName}
+                  required={!formData.anonymous}
+                  disabled={formData.anonymous}
+                  value={formData.anonymous ? 'Anonymous Devotee' : formData.donorName}
+                  placeholder={formData.anonymous ? 'Anonymous Devotee' : 'Enter devotee full name'}
                   onChange={(e) => setFormData({ ...formData, donorName: e.target.value })}
-                  className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
+                  className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden disabled:bg-stone-100 disabled:text-stone-500"
                 />
               </div>
 
@@ -904,7 +928,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
                 type="text"
                 required
                 value={editReason}
-                placeholder="e.g. Corrected spelling error in donor name / updated transaction ref"
+                placeholder="Enter reason for updating this offering (e.g. Corrected spelling / transaction reference)"
                 onChange={(e) => setEditReason(e.target.value)}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />

@@ -112,7 +112,7 @@ export const AdminForgotPasswordPage: React.FC = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter the mail"
+                    placeholder="Enter your email address"
                     className="block w-full pl-10 pr-3.5 py-2.5 bg-stone-900/80 border border-stone-700/80 rounded-xl text-stone-100 placeholder-stone-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                   />
                 </div>

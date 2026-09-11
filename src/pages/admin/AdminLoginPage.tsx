@@ -169,7 +169,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
-                    placeholder="Enter the mail"
+                    placeholder="Enter your email address"
                     className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm bg-stone-900/80 text-stone-100 rounded-xl border border-stone-700/80 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-hidden transition-all placeholder:text-stone-500"
                   />
                 </div>
@@ -187,7 +187,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    placeholder="••••••••••••"
+                    placeholder="Enter your password"
                     className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm bg-stone-900/80 text-stone-100 rounded-xl border border-stone-700/80 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-hidden transition-all placeholder:text-stone-500"
                   />
                   <button

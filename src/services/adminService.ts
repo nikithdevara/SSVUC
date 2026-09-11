@@ -65,8 +65,9 @@ export const donationsService = {
     const donations = svucStore.getDonations();
     const sequence = donations.length + 1;
     const year = '2026';
-    const id = `DON-${year}-${String(sequence).padStart(3, '0')}`;
-    const receiptNumber = generateReceiptNumber('MONETARY', sequence, year);
+    const uniqueSuffix = Date.now().toString(36).slice(-4).toUpperCase();
+    const id = `DON-${year}-${String(sequence).padStart(3, '0')}-${uniqueSuffix}`;
+    const receiptNumber = generateReceiptNumber('MONETARY', sequence, year, data.paymentMethod);
     const now = new Date();
     const dateStr = data.date || now.toISOString().split('T')[0];
     const currentUser = authService.getCurrentUser();
@@ -201,8 +202,7 @@ export const donationsService = {
           deleteDoc(doc(db, COLLECTIONS.DONATIONS, original.receiptId)).catch(() => {});
         }
       } catch (err) {
-        console.error('[Firestore Donation Update Error]', err);
-        throw new Error(getFriendlyFirebaseErrorMessage(err));
+        console.warn('[Firestore Donation Update Sync Warning]', err);
       }
     }
 
@@ -238,8 +238,7 @@ export const donationsService = {
             const cleanRec = cleanForFirebase(receipts[rIdx]);
             await setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true });
           } catch (err) {
-            console.error('[Firestore Receipt Update Error]', err);
-            throw new Error(getFriendlyFirebaseErrorMessage(err));
+            console.warn('[Firestore Receipt Update Warning]', err);
           }
         }
       }
@@ -345,7 +344,8 @@ export const materialsService = {
     const list = svucStore.getMaterials();
     const sequence = list.length + 1;
     const year = '2026';
-    const id = `MAT-${year}-${String(sequence).padStart(3, '0')}`;
+    const uniqueSuffix = Date.now().toString(36).slice(-4).toUpperCase();
+    const id = `MAT-${year}-${String(sequence).padStart(3, '0')}-${uniqueSuffix}`;
     const receiptNumber = generateReceiptNumber('MATERIAL', sequence, year);
     const now = new Date();
     const dateStr = data.date || now.toISOString().split('T')[0];
@@ -466,8 +466,7 @@ export const materialsService = {
           deleteDoc(doc(db, COLLECTIONS.MATERIALS, original.receiptId)).catch(() => {});
         }
       } catch (err) {
-        console.error('[Firestore Material Update Error]', err);
-        throw new Error(getFriendlyFirebaseErrorMessage(err));
+        console.warn('[Firestore Material Update Sync Warning]', err);
       }
     }
 

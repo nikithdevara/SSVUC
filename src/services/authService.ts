@@ -19,7 +19,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'SUPER_ADMIN',
     roleLabel: 'Super Admin',
     description: 'Full administrative access across all modules, settings, approvals & users.',
-    phone: '+91 94401 23456',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Super Admin',
@@ -28,7 +28,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'SUPER_ADMIN',
     roleLabel: 'Super Admin',
     description: 'Full administrative access across all modules, settings, approvals & users.',
-    phone: '+91 94401 23456',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Super Admin',
@@ -37,7 +37,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'SUPER_ADMIN',
     roleLabel: 'Super Admin',
     description: 'Full administrative access across all modules, settings, approvals & users.',
-    phone: '+91 94401 23456',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Super Admin',
@@ -46,7 +46,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'SUPER_ADMIN',
     roleLabel: 'Super Admin',
     description: 'Full administrative access across all modules, settings, approvals & users.',
-    phone: '+91 94401 23456',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Treasurer',
@@ -55,7 +55,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'TREASURER',
     roleLabel: 'Treasurer',
     description: 'Manages donations, material seva, expenses, receipts, vouchers and financial audits.',
-    phone: '+91 98480 67890',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Treasurer',
@@ -64,7 +64,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'TREASURER',
     roleLabel: 'Treasurer',
     description: 'Manages donations, material seva, expenses, receipts, vouchers and financial audits.',
-    phone: '+91 98480 67890',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Treasurer',
@@ -73,7 +73,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'TREASURER',
     roleLabel: 'Treasurer',
     description: 'Manages donations, material seva, expenses, receipts, vouchers and financial audits.',
-    phone: '+91 98480 67890',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Committee Admin',
@@ -82,7 +82,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'COMMITTEE_ADMIN',
     roleLabel: 'Committee Admin',
     description: 'Manages festival events, offerings, public announcements, media gallery & devotional programs.',
-    phone: '+91 94412 88990',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Committee Admin',
@@ -91,7 +91,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'COMMITTEE_ADMIN',
     roleLabel: 'Committee Admin',
     description: 'Manages festival events, public announcements, media gallery & devotional programs.',
-    phone: '+91 94412 88990',
+    phone: '+91 63051 92846',
   },
   {
     name: 'Committee Admin',
@@ -100,7 +100,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'COMMITTEE_ADMIN',
     roleLabel: 'Committee Admin',
     description: 'Manages festival events, public announcements, media gallery & devotional programs.',
-    phone: '+91 94412 88990',
+    phone: '+91 63051 92846',
   },
 ];
 
@@ -242,7 +242,7 @@ export const authService = {
         '123456',
         'password',
       ];
-      
+
       // If a password was provided, verify it or allow standard admin passwords
       if (cleanPassword && !validPasswords.includes(cleanPassword) && cleanPassword !== demo.password.toLowerCase()) {
         return { success: false, error: 'Incorrect password for this administrator account. Default: Admin@123' };
@@ -285,8 +285,8 @@ export const authService = {
         cleanEmail.includes('super') || cleanEmail.includes('president') || cleanEmail.includes('admin')
           ? 'SUPER_ADMIN'
           : cleanEmail.includes('treasur') || cleanEmail.includes('finance')
-          ? 'TREASURER'
-          : 'COMMITTEE_ADMIN';
+            ? 'TREASURER'
+            : 'COMMITTEE_ADMIN';
 
       const fallbackUser: AdminUser = {
         id: `USR-${Date.now().toString().slice(-4)}`,
@@ -295,7 +295,7 @@ export const authService = {
         role: assignedRole,
         status: 'ACTIVE',
         lastLogin: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
-        phone: '+91 94401 00000',
+        phone: '+91 63051 92846',
       };
       this.saveSession(fallbackUser);
       this.setRememberedEmail(cleanEmail, rememberMe);

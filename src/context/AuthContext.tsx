@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync state with local store and Firebase Auth
   useEffect(() => {
-    let unsubscribe = () => {};
+    let unsubscribe = () => { };
 
     if (isFirebaseActive && auth) {
       unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
@@ -186,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   role: normalizeRole(profile.role),
                   status: 'ACTIVE' as const,
                   lastLogin: new Date().toLocaleString(),
-                  phone: profile.phone || '+91 94401 23456',
+                  phone: profile.phone || '+91 63051 92846',
                 };
                 localStorage.setItem('svuc_current_user_v1', JSON.stringify(localAdmin));
               } else {
@@ -310,7 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       } catch (err: any) {
         console.warn('[Firebase Auth] Live Firebase sign-in failed, checking committee administrator accounts:', err);
-        
+
         // Fallback directly to local committee administrator accounts:
         const localRes = authService.login(trimmedEmail, password);
         if (localRes.success && localRes.user) {

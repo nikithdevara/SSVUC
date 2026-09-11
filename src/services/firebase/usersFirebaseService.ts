@@ -29,7 +29,7 @@ export const usersFirebaseService = {
               role: (data.role?.toUpperCase() || 'COMMITTEE_ADMIN') as AdminRole,
               status: (data.status?.toUpperCase() || 'ACTIVE') as any,
               lastLogin: data.lastLoginAt || 'Never',
-              phone: data.phone || '+91 94401 00000',
+              phone: data.phone || '+91 63051 92846',
               photoURL: data.photoURL,
               createdAt: data.createdAt,
             } as AdminUser;

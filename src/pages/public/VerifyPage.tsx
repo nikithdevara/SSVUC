@@ -95,7 +95,7 @@ export const VerifyPage: React.FC<VerifyPageProps> = ({ initialId, onNavigate })
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#C9972B]" />
             <input
               type="text"
-              placeholder="Enter Official Receipt Number (e.g. SSV-2026-D-00001 or SSV-2026-M-00001)"
+              placeholder="Enter Official Receipt Number (e.g. SSV-2026-C-00001, SSV-2026-O-00001 or SSV-2026-M-00001)"
               value={searchId}
               onChange={(e) => setSearchId(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleVerify()}

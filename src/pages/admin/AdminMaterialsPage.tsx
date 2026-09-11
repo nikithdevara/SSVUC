@@ -78,7 +78,8 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
       try {
         unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-          const deduped = deduplicateMaterials(live);
+          const currentLocal = svucStore.getMaterials();
+          const deduped = deduplicateMaterials([...live, ...currentLocal]);
           setMaterials(deduped);
         });
       } catch (err) {
@@ -215,11 +216,25 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
+    if (!formData.materialName.trim()) {
+      showToast('Please enter the Material / Item Name', 'error');
+      return;
+    }
+    if (!formData.quantity || Number(formData.quantity) <= 0) {
+      showToast('Please enter a valid quantity', 'error');
+      return;
+    }
+    if (!formData.anonymous && !formData.donorName.trim()) {
+      showToast('Please enter the Devotee Name or mark as Anonymous', 'error');
+      return;
+    }
+
     try {
-      await materialsService.update(
+      setIsSubmitting(true);
+      const res = await materialsService.update(
         editTarget.id,
         {
-          donorName: formData.donorName,
+          donorName: formData.anonymous ? 'Devotee (Anonymous)' : formData.donorName,
           anonymous: formData.anonymous,
           materialName: formData.materialName,
           category: formData.category,
@@ -231,12 +246,21 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
         },
         actionReason
       );
+
+      // Immediately update local state
+      if (res.material) {
+        setMaterials((prev) =>
+          prev.map((m) => (m.id === editTarget.id || m.receiptId === editTarget.receiptId ? res.material! : m))
+        );
+      }
+
       setEditTarget(null);
-      refreshList();
       showToast(`Material pledge ${editTarget.receiptId} updated successfully!`, 'success');
     } catch (err: any) {
       console.error('Error updating material pledge:', err);
       showToast(err?.message || 'Failed to update material pledge', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -247,15 +271,51 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
     try {
       if (type === 'approve') {
         await materialsService.approve(target.id);
+        if (target.receiptId && target.receiptId !== target.id) {
+          await materialsService.approve(target.receiptId);
+        }
+        setMaterials((prev) =>
+          prev.map((m) =>
+            m.id === target.id || m.receiptId === target.receiptId || (target.receiptId && m.id === target.receiptId)
+              ? { ...m, status: 'Approved' }
+              : m
+          )
+        );
         showToast(`Material pledge ${target.receiptId} verified & accepted!`, 'success');
       } else if (type === 'reject') {
         await materialsService.reject(target.id, actionReason || 'Declined pledge');
+        if (target.receiptId && target.receiptId !== target.id) {
+          await materialsService.reject(target.receiptId, actionReason || 'Declined pledge');
+        }
+        setMaterials((prev) =>
+          prev.map((m) =>
+            m.id === target.id || m.receiptId === target.receiptId || (target.receiptId && m.id === target.receiptId)
+              ? { ...m, status: 'Declined' }
+              : m
+          )
+        );
         showToast(`Material pledge ${target.receiptId} declined.`, 'info');
       } else if (type === 'archive') {
         await materialsService.archive(target.id, 'Archived material pledge');
+        if (target.receiptId && target.receiptId !== target.id) {
+          await materialsService.archive(target.receiptId, 'Archived material pledge');
+        }
+        setMaterials((prev) =>
+          prev.map((m) =>
+            m.id === target.id || m.receiptId === target.receiptId || (target.receiptId && m.id === target.receiptId)
+              ? { ...m, status: 'Archived' }
+              : m
+          )
+        );
         showToast(`Material pledge ${target.receiptId} archived.`, 'info');
       } else if (type === 'delete') {
         await materialsService.delete(target.id);
+        if (target.receiptId && target.receiptId !== target.id) {
+          await materialsService.delete(target.receiptId);
+        }
+        setMaterials((prev) =>
+          prev.filter((m) => m.id !== target.id && m.receiptId !== target.receiptId && (!target.receiptId || m.id !== target.receiptId))
+        );
         showToast(`Material pledge ${target.receiptId} deleted.`, 'info');
       }
     } catch (err: any) {
@@ -264,7 +324,6 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
     } finally {
       setConfirmAction(null);
       setActionReason('');
-      refreshList();
     }
   };
 
@@ -615,7 +674,7 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
                 type="text"
                 required
                 value={formData.materialName}
-                placeholder="e.g. Sona Masoori Rice, Pure Ghee"
+                placeholder="Enter material or item name (e.g. Sona Masoori Rice, Pure Ghee)"
                 onChange={(e) => setFormData({ ...formData, materialName: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -666,7 +725,7 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
                 type="text"
                 required
                 value={formData.unit}
-                placeholder="kg, bags, litres, tins, packs"
+                placeholder="Enter unit of measurement (kg, bags, litres, tins, packs)"
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -676,15 +735,16 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-stone-700 mb-1">
-                Contributor Name <span className="text-red-500">*</span>
+                Contributor Name {!formData.anonymous && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="text"
-                required
-                value={formData.donorName}
-                placeholder="e.g. Smt. Lakshmi Devi"
+                required={!formData.anonymous}
+                disabled={formData.anonymous}
+                value={formData.anonymous ? 'Anonymous Devotee' : formData.donorName}
+                placeholder={formData.anonymous ? 'Anonymous Devotee' : 'Enter devotee / contributor name'}
                 onChange={(e) => setFormData({ ...formData, donorName: e.target.value })}
-                className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
+                className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden disabled:bg-stone-100 disabled:text-stone-500"
               />
             </div>
 
@@ -693,7 +753,7 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
               <input
                 type="tel"
                 value={formData.phoneNumber}
-                placeholder="+91 98480 XXXXX"
+                placeholder="Enter 10-digit mobile number"
                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -708,8 +768,8 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs font-semibold focus:border-[#7F1D1D] outline-hidden bg-white"
               >
-                <option value="Approved">Verified / Received (Mandapam Handover Done)</option>
-                <option value="Pending">Pending (Pledged by Devotee)</option>
+                <option value="Approved">Verified / Received</option>
+                <option value="Pending">Pending Handover</option>
               </select>
             </div>
 
@@ -718,7 +778,13 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
                 <input
                   type="checkbox"
                   checked={formData.anonymous}
-                  onChange={(e) => setFormData({ ...formData, anonymous: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      anonymous: e.target.checked,
+                      donorName: e.target.checked ? 'Devotee (Anonymous)' : '',
+                    })
+                  }
                   className="w-4 h-4 rounded text-[#7F1D1D] focus:ring-[#7F1D1D]"
                 />
                 <span>Anonymous Devotee (Keep name confidential)</span>
@@ -731,7 +797,7 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
             <textarea
               rows={2}
               value={formData.notes}
-              placeholder="e.g., Stored in Mandapam Store Room Rack 2"
+              placeholder="Enter storage location or remarks..."
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />
@@ -823,6 +889,34 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
+                <label className="block font-semibold text-stone-700 mb-1">
+                  Contributor Name {!formData.anonymous && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  required={!formData.anonymous}
+                  disabled={formData.anonymous}
+                  value={formData.anonymous ? 'Anonymous Devotee' : formData.donorName}
+                  placeholder={formData.anonymous ? 'Anonymous Devotee' : 'Enter devotee / contributor name'}
+                  onChange={(e) => setFormData({ ...formData, donorName: e.target.value })}
+                  className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden disabled:bg-stone-100 disabled:text-stone-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-stone-700 mb-1">Contact Phone</label>
+                <input
+                  type="tel"
+                  value={formData.phoneNumber}
+                  placeholder="Enter 10-digit mobile number"
+                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                  className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
                 <label className="block font-semibold text-stone-700 mb-1">Status</label>
                 <select
                   value={formData.status}
@@ -841,10 +935,16 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
                   <input
                     type="checkbox"
                     checked={formData.anonymous}
-                    onChange={(e) => setFormData({ ...formData, anonymous: e.target.checked })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        anonymous: e.target.checked,
+                        donorName: e.target.checked ? 'Devotee (Anonymous)' : '',
+                      })
+                    }
                     className="w-4 h-4 rounded text-[#7F1D1D] focus:ring-[#7F1D1D]"
                   />
-                  <span>Anonymous Devotee</span>
+                  <span>Anonymous Devotee (Keep name confidential)</span>
                 </label>
               </div>
             </div>
@@ -857,7 +957,7 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
                 type="text"
                 required
                 value={actionReason}
-                placeholder="e.g. Adjusted count after physical store verification"
+                placeholder="Enter audit reason for updating record (e.g. Physical inventory verification)"
                 onChange={(e) => setActionReason(e.target.value)}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />

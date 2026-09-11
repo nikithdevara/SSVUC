@@ -97,7 +97,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
     const text = encodeURIComponent(
       'Jai Ganesha! I would like to inquire about Ganesh Utsav 2026 pooja sankalpam and sevas at Gandhinagar Anjayya Colony, Anakapalle.'
     );
-    window.open(`https://wa.me/919440123456?text=${text}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/916305192846?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -116,7 +116,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
       {/* Quick Action Contact Bar (Call, WhatsApp, Get Directions) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
         <a
-          href="tel:+919440123456"
+          href="tel:+916305192846"
           className="p-4 rounded-2xl bg-white border border-[#C9972B]/40 hover:border-[#D97706] shadow-md flex items-center justify-center gap-3 text-[#7F1D1D] font-bold text-sm transition-all hover:bg-[#FFF9ED] cursor-pointer"
         >
           <div className="w-10 h-10 rounded-xl bg-[#7F1D1D]/10 flex items-center justify-center shrink-0">
@@ -199,10 +199,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                   <span className="text-[11px] text-[#292524]/60">Super Admin</span>
                 </div>
                 <a
-                  href="tel:+919440123456"
+                  href="tel:+916305192846"
                   className="font-mono font-bold text-xs text-[#166534] bg-[#166534]/10 px-3 py-1.5 rounded-lg hover:bg-[#166534]/20"
                 >
-                  +91 94401 23456
+                  +91 63051 92846
                 </a>
               </div>
 
@@ -212,10 +212,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                   <span className="text-[11px] text-[#292524]/60">Treasurer</span>
                 </div>
                 <a
-                  href="tel:+919848067890"
+                  href="tel:+916305192846"
                   className="font-mono font-bold text-xs text-[#166534] bg-[#166534]/10 px-3 py-1.5 rounded-lg hover:bg-[#166534]/20"
                 >
-                  +91 98480 67890
+                  +91 63051 92846
                 </a>
               </div>
 
@@ -294,15 +294,14 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Suresh Varma"
+                    placeholder="Enter your full name"
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value);
                       if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                     }}
-                    className={`w-full p-3 rounded-xl border ${
-                      errors.name ? 'border-red-500 bg-red-50' : 'border-[#C9972B]/40 bg-[#FFF9ED]'
-                    } outline-none focus:ring-2 focus:ring-[#D97706] text-sm text-[#292524]`}
+                    className={`w-full p-3 rounded-xl border ${errors.name ? 'border-red-500 bg-red-50' : 'border-[#C9972B]/40 bg-[#FFF9ED]'
+                      } outline-none focus:ring-2 focus:ring-[#D97706] text-sm text-[#292524]`}
                   />
                   {errors.name && <p className="text-[11px] text-red-600 mt-1 font-medium">{errors.name}</p>}
                 </div>
@@ -314,15 +313,14 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                     </label>
                     <input
                       type="tel"
-                      placeholder="+91 98480 12345"
+                      placeholder="Enter your 10-digit mobile number"
                       value={phone}
                       onChange={(e) => {
                         setPhone(e.target.value);
                         if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
                       }}
-                      className={`w-full p-3 rounded-xl border ${
-                        errors.phone ? 'border-red-500 bg-red-50' : 'border-[#C9972B]/40 bg-[#FFF9ED]'
-                      } outline-none focus:ring-2 focus:ring-[#D97706] text-sm text-[#292524]`}
+                      className={`w-full p-3 rounded-xl border ${errors.phone ? 'border-red-500 bg-red-50' : 'border-[#C9972B]/40 bg-[#FFF9ED]'
+                        } outline-none focus:ring-2 focus:ring-[#D97706] text-sm text-[#292524]`}
                     />
                     {errors.phone && <p className="text-[11px] text-red-600 mt-1 font-medium">{errors.phone}</p>}
                   </div>
@@ -333,15 +331,14 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                     </label>
                     <input
                       type="email"
-                      placeholder="devotee@example.com"
+                      placeholder="Enter your email address"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
                         if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                       }}
-                      className={`w-full p-3 rounded-xl border ${
-                        errors.email ? 'border-red-500 bg-red-50' : 'border-[#C9972B]/40 bg-[#FFF9ED]'
-                      } outline-none focus:ring-2 focus:ring-[#D97706] text-sm text-[#292524]`}
+                      className={`w-full p-3 rounded-xl border ${errors.email ? 'border-red-500 bg-red-50' : 'border-[#C9972B]/40 bg-[#FFF9ED]'
+                        } outline-none focus:ring-2 focus:ring-[#D97706] text-sm text-[#292524]`}
                     />
                     {errors.email && <p className="text-[11px] text-red-600 mt-1 font-medium">{errors.email}</p>}
                   </div>

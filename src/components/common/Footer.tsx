@@ -116,7 +116,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-[#F59E0B] shrink-0" />
-                <span>+91 94401 23456 / +91 98480 67890</span>
+                <span>+91 63051 92846 / +91 63051 92846</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#F59E0B] shrink-0" />

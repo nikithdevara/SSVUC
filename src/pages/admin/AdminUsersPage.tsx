@@ -301,7 +301,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ onNavigate }) =>
               type="text"
               required
               value={formData.name}
-              placeholder="e.g. Sri K. Suresh"
+              placeholder="Enter full legal name"
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />
@@ -314,7 +314,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ onNavigate }) =>
                 type="email"
                 required
                 value={formData.email}
-                placeholder="suresh@gmail.com"
+                placeholder="Enter email address"
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -325,7 +325,7 @@ export const AdminUsersPage: React.FC<AdminUsersPageProps> = ({ onNavigate }) =>
               <input
                 type="tel"
                 value={formData.phone}
-                placeholder="+91 94401 XXXXX"
+                placeholder="Enter 10-digit mobile number"
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />

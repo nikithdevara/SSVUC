@@ -27,6 +27,7 @@ import { db, isFirebaseConfigured } from '../lib/firebase';
 import { COLLECTIONS, cleanForFirebase } from './firebase/firestoreService';
 import { collection, doc, getDoc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { seedService } from './firebase/seedService';
+import { generateReceiptNumber, standardizeReceiptNumber } from './receiptNumberService';
 
 export const STORAGE_KEYS = {
   DONATIONS: 'svuc_donations_2026_clean',
@@ -72,17 +73,23 @@ export function setLocal<T>(key: string, data: T) {
  */
 export function deduplicateDonations(donations: Donation[]): Donation[] {
   const map = new Map<string, Donation>();
-  for (const item of donations) {
+  for (let i = 0; i < donations.length; i++) {
+    const item = donations[i];
     if (!item) continue;
-    const key = (item.receiptId || item.id || '').trim();
+
+    const stdReceiptId = standardizeReceiptNumber(item.receiptId, 'MONETARY', item.paymentMethod, i + 1);
+    const itemWithStd: Donation = { ...item, receiptId: stdReceiptId };
+
+    const key = (itemWithStd.receiptId || itemWithStd.id || '').trim();
     if (!key) continue;
 
     let existingKey = map.has(key) ? key : null;
     if (!existingKey) {
       for (const [k, v] of map.entries()) {
         if (
+          (itemWithStd.id && (v.id === itemWithStd.id || v.receiptId === itemWithStd.id)) ||
           (item.id && (v.id === item.id || v.receiptId === item.id)) ||
-          (item.receiptId && (v.id === item.receiptId || v.receiptId === item.receiptId))
+          (item.receiptId && (v.id === item.receiptId || v.receiptId === item.receiptId || v.receiptId === itemWithStd.receiptId))
         ) {
           existingKey = k;
           break;
@@ -91,7 +98,7 @@ export function deduplicateDonations(donations: Donation[]): Donation[] {
     }
 
     if (!existingKey) {
-      map.set(key, item);
+      map.set(key, itemWithStd);
     } else {
       const existing = map.get(existingKey)!;
       const isItemApproved = item.status === 'Approved' || item.status === 'Verified';
@@ -100,9 +107,9 @@ export function deduplicateDonations(donations: Donation[]): Donation[] {
 
       const merged: Donation = {
         ...existing,
-        ...item,
+        ...itemWithStd,
         status: isItemApproved ? item.status : (isExistingApproved ? existing.status : (isItemNewer ? item.status : existing.status)),
-        receiptId: item.receiptId || existing.receiptId,
+        receiptId: itemWithStd.receiptId || existing.receiptId,
         id: existing.id || item.id,
       };
       map.set(existingKey, merged);
@@ -116,17 +123,23 @@ export function deduplicateDonations(donations: Donation[]): Donation[] {
  */
 export function deduplicateMaterials(materials: MaterialDonation[]): MaterialDonation[] {
   const map = new Map<string, MaterialDonation>();
-  for (const item of materials) {
+  for (let i = 0; i < materials.length; i++) {
+    const item = materials[i];
     if (!item) continue;
-    const key = (item.receiptId || item.id || '').trim();
+
+    const stdReceiptId = standardizeReceiptNumber(item.receiptId, 'MATERIAL', undefined, i + 1);
+    const itemWithStd: MaterialDonation = { ...item, receiptId: stdReceiptId };
+
+    const key = (itemWithStd.receiptId || itemWithStd.id || '').trim();
     if (!key) continue;
 
     let existingKey = map.has(key) ? key : null;
     if (!existingKey) {
       for (const [k, v] of map.entries()) {
         if (
+          (itemWithStd.id && (v.id === itemWithStd.id || v.receiptId === itemWithStd.id)) ||
           (item.id && (v.id === item.id || v.receiptId === item.id)) ||
-          (item.receiptId && (v.id === item.receiptId || v.receiptId === item.receiptId))
+          (item.receiptId && (v.id === item.receiptId || v.receiptId === item.receiptId || v.receiptId === itemWithStd.receiptId))
         ) {
           existingKey = k;
           break;
@@ -135,7 +148,7 @@ export function deduplicateMaterials(materials: MaterialDonation[]): MaterialDon
     }
 
     if (!existingKey) {
-      map.set(key, item);
+      map.set(key, itemWithStd);
     } else {
       const existing = map.get(existingKey)!;
       const isItemApproved = item.status === 'Approved' || item.status === 'Verified';
@@ -144,9 +157,9 @@ export function deduplicateMaterials(materials: MaterialDonation[]): MaterialDon
 
       const merged: MaterialDonation = {
         ...existing,
-        ...item,
+        ...itemWithStd,
         status: isItemApproved ? item.status : (isExistingApproved ? existing.status : (isItemNewer ? item.status : existing.status)),
-        receiptId: item.receiptId || existing.receiptId,
+        receiptId: itemWithStd.receiptId || existing.receiptId,
         id: existing.id || item.id,
       };
       map.set(existingKey, merged);
@@ -213,11 +226,89 @@ export function deduplicateReceipts(receipts: Receipt[]): Receipt[] {
   return Array.from(map.values()).sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
 }
 
+/**
+ * Generate initial receipts from existing donations and materials
+ */
+export function buildInitialReceipts(): Receipt[] {
+  const donations = getLocal<Donation[]>(STORAGE_KEYS.DONATIONS, initialDonations);
+  const materials = getLocal<MaterialDonation[]>(STORAGE_KEYS.MATERIALS, initialMaterialDonations);
+  const receipts: Receipt[] = [];
+
+  const stdDonations = deduplicateDonations(donations);
+  const stdMaterials = deduplicateMaterials(materials);
+
+  stdDonations.forEach((d) => {
+    if (d.receiptId) {
+      const isApproved = d.status === 'Approved' || d.status === 'Verified';
+      const isDeclined = d.status === 'Declined' || d.status === 'Rejected' || d.status === 'Archived';
+      receipts.push({
+        id: d.receiptId,
+        receiptNumber: d.receiptId,
+        type: 'MONETARY',
+        donationId: d.id,
+        donorName: d.donorName,
+        anonymous: !!d.anonymous,
+        amount: d.amount,
+        paymentMethod: d.paymentMethod,
+        date: d.date || new Date().toISOString().split('T')[0],
+        verificationCode: isApproved
+          ? `SVUC-${String(d.receiptId || d.id || '').replace(/[^A-Z0-9]/gi, '')}-VERIFIED`
+          : isDeclined
+            ? `SVUC-${String(d.receiptId || d.id || '').replace(/[^A-Z0-9]/gi, '')}-DECLINED`
+            : `SVUC-${String(d.receiptId || d.id || '').replace(/[^A-Z0-9]/gi, '')}-PENDING`,
+        qrCodeData: `https://siddhivinayaka-utsav.org/#/receipt/${d.receiptId}`,
+        committeeName: 'Sri Siddhi Vinayaka Utsava Committee',
+        location: 'Gandhinagar Anjayya Colony, Anakapalle',
+        issuedBy: d.approvedBy || 'Utsav Committee',
+        createdAt: d.createdAt || new Date().toISOString(),
+        status: isApproved ? 'VERIFIED' : isDeclined ? 'VOID' : 'PENDING',
+        voidReason: isDeclined ? (d.rejectionReason || 'Declined by administration') : undefined,
+      });
+    }
+  });
+
+  stdMaterials.forEach((m) => {
+    if (m.receiptId) {
+      const isApproved = m.status === 'Approved' || m.status === 'Verified';
+      const isDeclined = m.status === 'Declined' || m.status === 'Rejected' || m.status === 'Archived';
+      receipts.push({
+        id: m.receiptId,
+        receiptNumber: m.receiptId,
+        type: 'MATERIAL',
+        materialDonationId: m.id,
+        donorName: m.donorName,
+        anonymous: !!m.anonymous,
+        materialName: m.materialName,
+        quantity: m.quantity,
+        unit: m.unit,
+        date: m.date || new Date().toISOString().split('T')[0],
+        verificationCode: isApproved
+          ? `SVUC-MAT-${String(m.receiptId || m.id || '').replace(/[^A-Z0-9]/gi, '')}-VERIFIED`
+          : isDeclined
+            ? `SVUC-MAT-${String(m.receiptId || m.id || '').replace(/[^A-Z0-9]/gi, '')}-DECLINED`
+            : `SVUC-MAT-${String(m.receiptId || m.id || '').replace(/[^A-Z0-9]/gi, '')}-PENDING`,
+        qrCodeData: `https://siddhivinayaka-utsav.org/#/receipt/${m.receiptId}`,
+        committeeName: 'Sri Siddhi Vinayaka Utsava Committee',
+        location: 'Gandhinagar Anjayya Colony, Anakapalle',
+        issuedBy: m.approvedBy || 'Utsav Committee',
+        createdAt: m.createdAt || new Date().toISOString(),
+        status: isApproved ? 'VERIFIED' : isDeclined ? 'VOID' : 'PENDING',
+        voidReason: isDeclined ? 'Declined by administration' : undefined,
+      });
+    }
+  });
+
+  return deduplicateReceipts(receipts);
+}
+
 
 export const svucStore = {
   // --- Settings ---
   getSettings(): CommitteeSettings {
     return getLocal<CommitteeSettings>(STORAGE_KEYS.SETTINGS, initialSettings);
+  },
+  saveSettings(data: CommitteeSettings) {
+    setLocal(STORAGE_KEYS.SETTINGS, data);
   },
   updateSettings(newSettings: Partial<CommitteeSettings>) {
     const current = this.getSettings();
@@ -252,7 +343,7 @@ export const svucStore = {
         role: (role as any) || 'COMMITTEE_ADMIN',
         status: 'ACTIVE',
         lastLogin: new Date().toLocaleString(),
-        phone: '+91 94401 00000',
+        phone: '+91 63051 92846',
       };
       setLocal(STORAGE_KEYS.CURRENT_USER, fallbackUser);
       this.addAuditLog('System', fallbackUser.id, 'LOGIN', `Logged into Admin Portal with role: ${fallbackUser.role}`);
@@ -269,7 +360,17 @@ export const svucStore = {
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
   getAdminUsers(): AdminUser[] {
-    return getLocal<AdminUser[]>(STORAGE_KEYS.USERS, initialAdminUsers);
+    const raw = getLocal<AdminUser[]>(STORAGE_KEYS.USERS, initialAdminUsers);
+    const updated = raw.map((u) => {
+      if (!u.phone || u.phone.includes('94401') || u.phone.includes('98480') || u.phone.includes('94412') || u.phone.includes('00000')) {
+        return { ...u, phone: '+91 63051 92846' };
+      }
+      return u;
+    });
+    return updated;
+  },
+  saveAdminUsers(users: AdminUser[]) {
+    setLocal(STORAGE_KEYS.USERS, users);
   },
   addAdminUser(user: Omit<AdminUser, 'id' | 'lastLogin'>): AdminUser {
     const users = this.getAdminUsers();
@@ -292,6 +393,9 @@ export const svucStore = {
     const raw = getLocal<Donation[]>(STORAGE_KEYS.DONATIONS, initialDonations);
     return deduplicateDonations(raw);
   },
+  saveDonations(donations: Donation[]) {
+    setLocal(STORAGE_KEYS.DONATIONS, deduplicateDonations(donations));
+  },
   addDonation(data: {
     donorName: string;
     anonymous: boolean;
@@ -305,8 +409,11 @@ export const svucStore = {
     status?: Donation['status'];
   }): { donation: Donation; receipt: Receipt } {
     const donations = this.getDonations();
-    const id = `DON-2026-${String(donations.length + 1).padStart(3, '0')}`;
-    const receiptId = `REC-2026-${String(donations.length + 1).padStart(3, '0')}`;
+    const sequence = donations.length + 1;
+    const year = '2026';
+    const uniqueSuffix = Date.now().toString(36).slice(-4).toUpperCase();
+    const id = `DON-${year}-${String(sequence).padStart(3, '0')}-${uniqueSuffix}`;
+    const receiptId = generateReceiptNumber('MONETARY', sequence, year, data.paymentMethod);
     const now = new Date();
     const dateStr = data.date || now.toISOString().split('T')[0];
     const initialStatus = data.status || 'Verified';
@@ -341,9 +448,9 @@ export const svucStore = {
       paymentMethod: newDonation.paymentMethod,
       date: dateStr,
       verificationCode: isApproved
-        ? `SVUC-${id.replace('DON-', '')}-VERIFIED`
-        : `SVUC-${id.replace('DON-', '')}-PENDING`,
-      qrCodeData: `https://siddhivinayaka-utsav.org/verify/${receiptId}`,
+        ? `SVUC-${String(receiptId).replace(/[^A-Z0-9]/gi, '')}-VERIFIED`
+        : `SVUC-${String(receiptId).replace(/[^A-Z0-9]/gi, '')}-PENDING`,
+      qrCodeData: `https://siddhivinayaka-utsav.org/#/receipt/${receiptId}`,
       committeeName: 'Sri Siddhi Vinayaka Utsava Committee',
       location: 'Gandhinagar Anjayya Colony, Anakapalle',
       issuedBy: 'Utsav Committee',
@@ -402,6 +509,9 @@ export const svucStore = {
     const raw = getLocal<MaterialDonation[]>(STORAGE_KEYS.MATERIALS, initialMaterialDonations);
     return deduplicateMaterials(raw);
   },
+  saveMaterials(materials: MaterialDonation[]) {
+    setLocal(STORAGE_KEYS.MATERIALS, deduplicateMaterials(materials));
+  },
   addMaterial(data: {
     donorName: string;
     anonymous: boolean;
@@ -418,8 +528,11 @@ export const svucStore = {
     status?: MaterialDonation['status'];
   }): { material: MaterialDonation; receipt: Receipt } {
     const list = this.getMaterials();
-    const id = `MAT-2026-${String(list.length + 1).padStart(3, '0')}`;
-    const receiptId = `REC-MAT-${String(list.length + 1).padStart(3, '0')}`;
+    const sequence = list.length + 1;
+    const year = '2026';
+    const uniqueSuffix = Date.now().toString(36).slice(-4).toUpperCase();
+    const id = `MAT-${year}-${String(sequence).padStart(3, '0')}-${uniqueSuffix}`;
+    const receiptId = generateReceiptNumber('MATERIAL', sequence, year);
     const now = new Date();
     const dateStr = data.date || now.toISOString().split('T')[0];
     const initialStatus = data.status || 'Pending';
@@ -460,9 +573,9 @@ export const svucStore = {
       unit: newMaterial.unit,
       date: dateStr,
       verificationCode: isApproved
-        ? `SVUC-MAT-${id.replace('MAT-', '')}-VERIFIED`
-        : `SVUC-MAT-${id.replace('MAT-', '')}-PENDING`,
-      qrCodeData: `https://siddhivinayaka-utsav.org/verify/${receiptId}`,
+        ? `SVUC-MAT-${String(receiptId).replace(/[^A-Z0-9]/gi, '')}-VERIFIED`
+        : `SVUC-MAT-${String(receiptId).replace(/[^A-Z0-9]/gi, '')}-PENDING`,
+      qrCodeData: `https://siddhivinayaka-utsav.org/#/receipt/${receiptId}`,
       committeeName: 'Sri Siddhi Vinayaka Utsava Committee',
       location: 'Gandhinagar Anjayya Colony, Anakapalle',
       issuedBy: 'Utsav Committee',
@@ -513,7 +626,11 @@ export const svucStore = {
 
   // --- Expenses ---
   getExpenses(): Expense[] {
-    return getLocal<Expense[]>(STORAGE_KEYS.EXPENSES, initialExpenses);
+    const raw = getLocal<Expense[]>(STORAGE_KEYS.EXPENSES, initialExpenses);
+    return deduplicateExpenses(raw);
+  },
+  saveExpenses(expenses: Expense[]) {
+    setLocal(STORAGE_KEYS.EXPENSES, deduplicateExpenses(expenses));
   },
   addExpense(data: {
     expenseName: string;
@@ -581,6 +698,9 @@ export const svucStore = {
       }
       return r;
     });
+  },
+  saveReceipts(receipts: Receipt[]) {
+    setLocal(STORAGE_KEYS.RECEIPTS, deduplicateReceipts(receipts));
   },
   getReceiptById(receiptId: string): Receipt | undefined {
     const receipts = this.getReceipts();
@@ -697,6 +817,9 @@ export const svucStore = {
   getEvents(): EventItem[] {
     return getLocal<EventItem[]>(STORAGE_KEYS.EVENTS, initialEvents);
   },
+  saveEvents(events: EventItem[]) {
+    setLocal(STORAGE_KEYS.EVENTS, events);
+  },
   addEvent(event: Omit<EventItem, 'id'>): EventItem {
     const list = this.getEvents();
     const newEvent: EventItem = {
@@ -723,6 +846,9 @@ export const svucStore = {
   // --- Announcements ---
   getAnnouncements(): Announcement[] {
     return getLocal<Announcement[]>(STORAGE_KEYS.ANNOUNCEMENTS, initialAnnouncements);
+  },
+  saveAnnouncements(announcements: Announcement[]) {
+    setLocal(STORAGE_KEYS.ANNOUNCEMENTS, announcements);
   },
   addAnnouncement(ann: Omit<Announcement, 'id' | 'date'>): Announcement {
     const list = this.getAnnouncements();
@@ -751,6 +877,9 @@ export const svucStore = {
   // --- Gallery ---
   getGallery(): GalleryItem[] {
     return getLocal<GalleryItem[]>(STORAGE_KEYS.GALLERY, initialGallery);
+  },
+  saveGallery(gallery: GalleryItem[]) {
+    setLocal(STORAGE_KEYS.GALLERY, gallery);
   },
   addGalleryItem(item: Omit<GalleryItem, 'id'>): GalleryItem {
     const list = this.getGallery();
@@ -804,6 +933,9 @@ export const svucStore = {
   getNotifications(): any[] {
     return getLocal<any[]>(STORAGE_KEYS.NOTIFICATIONS, []);
   },
+  saveNotifications(notifications: any[]) {
+    setLocal(STORAGE_KEYS.NOTIFICATIONS, notifications);
+  },
   markNotificationRead(id: string) {
     const list = this.getNotifications().map((n) => (n.id === id ? { ...n, read: true } : n));
     setLocal(STORAGE_KEYS.NOTIFICATIONS, list);
@@ -813,6 +945,14 @@ export const svucStore = {
     const item = { ...notif, id: `NOTIF-${Date.now()}` };
     setLocal(STORAGE_KEYS.NOTIFICATIONS, [item, ...list]);
     return item;
+  },
+
+  // --- Contact Messages ---
+  getContactMessages(): ContactMessage[] {
+    return getLocal<ContactMessage[]>(STORAGE_KEYS.MESSAGES, []);
+  },
+  saveContactMessages(messages: ContactMessage[]) {
+    setLocal(STORAGE_KEYS.MESSAGES, messages);
   },
 
   // --- Financial Transparency Aggregations ---
@@ -871,7 +1011,7 @@ export const svucStore = {
         role: 'TREASURER',
         status: 'ACTIVE',
         lastLogin: new Date().toLocaleString(),
-        phone: '+91 98480 23456',
+        phone: '+91 63051 92846',
       };
       setLocal(STORAGE_KEYS.CURRENT_USER, adminUser);
       this.addAuditLog('System', adminUser.id, 'LOGIN', 'Admin authenticated into Treasurer portal.');
@@ -901,7 +1041,7 @@ export const svucStore = {
         name: 'Sri B. Satyam',
         role: 'Treasurer & Accounts Auditor',
         servingSince: 'Serving since 2015 (11 years)',
-        phoneNumber: '+91 94401 23456',
+        phoneNumber: '+91 63051 92846',
         photoUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80',
         bio: 'Practicing financial consultant in Anakapalle. Oversees day-to-day expenditure, daily counter verification, and maintains the 100% transparent public balance sheet.',
       },
@@ -947,67 +1087,6 @@ export const svucStore = {
   // --- Single Announcement by ID ---
   getAnnouncementById(id: string): Announcement | undefined {
     return this.getAnnouncements().find((a) => a.id === id);
-  },
-
-  // --- Donations Persistence ---
-  saveDonations(donations: Donation[]): void {
-    const deduped = deduplicateDonations(donations);
-    setLocal(STORAGE_KEYS.DONATIONS, deduped);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Expenses Persistence ---
-  saveExpenses(expenses: Expense[]): void {
-    const deduped = deduplicateExpenses(expenses);
-    setLocal(STORAGE_KEYS.EXPENSES, deduped);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Materials Persistence ---
-  saveMaterials(materials: MaterialDonation[]): void {
-    const deduped = deduplicateMaterials(materials);
-    setLocal(STORAGE_KEYS.MATERIALS, deduped);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Receipts Persistence ---
-  saveReceipts(receipts: Receipt[]): void {
-    const deduped = deduplicateReceipts(receipts);
-    setLocal(STORAGE_KEYS.RECEIPTS, deduped);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Events Persistence ---
-  saveEvents(events: EventItem[]): void {
-    setLocal(STORAGE_KEYS.EVENTS, events);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Announcements Persistence ---
-  saveAnnouncements(announcements: Announcement[]): void {
-    setLocal(STORAGE_KEYS.ANNOUNCEMENTS, announcements);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Gallery Persistence ---
-  saveGallery(gallery: GalleryItem[]): void {
-    setLocal(STORAGE_KEYS.GALLERY, gallery);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Admin Users Persistence ---
-  saveAdminUsers(users: AdminUser[]): void {
-    setLocal(STORAGE_KEYS.USERS, users);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Contact Messages ---
-  getContactMessages(): ContactMessage[] {
-    return getLocal<ContactMessage[]>(STORAGE_KEYS.MESSAGES, []);
-  },
-  saveContactMessages(msgs: ContactMessage[]): void {
-    setLocal(STORAGE_KEYS.MESSAGES, msgs);
-    window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Notification Bulk Actions ---
@@ -1060,18 +1139,6 @@ export const svucStore = {
     return true;
   },
 
-  // --- Settings Persistence ---
-  saveSettings(settings: CommitteeSettings): void {
-    setLocal(STORAGE_KEYS.SETTINGS, settings);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
-  // --- Audit Logs Persistence ---
-  saveAuditLogs(logs: AuditLog[]): void {
-    setLocal(STORAGE_KEYS.AUDIT_LOGS, logs);
-    window.dispatchEvent(new Event('svuc_store_updated'));
-  },
-
   // --- Admin Users alias ---
   getUsers(): AdminUser[] {
     return this.getAdminUsers();
@@ -1090,7 +1157,7 @@ let hasInitializedFirestoreSync = false;
  * Universal live synchronization engine that links Cloud Firestore with all active clients/devices in real time
  */
 export function initGlobalFirestoreSync(): () => void {
-  if (hasInitializedFirestoreSync) return () => {};
+  if (hasInitializedFirestoreSync) return () => { };
   hasInitializedFirestoreSync = true;
 
   const unsubscribers: Array<() => void> = [];
@@ -1116,8 +1183,16 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.EXPENSES),
       (snap) => {
         const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
-        const list = deduplicateExpenses(rawList);
+        const local = svucStore.getExpenses();
+        const list = deduplicateExpenses([...rawList, ...local]);
         svucStore.saveExpenses(list);
+        if (rawList.length < local.length) {
+          local.forEach((loc) => {
+            if (!rawList.some((r) => r.id === loc.id || r.receiptVoucherNo === loc.receiptVoucherNo)) {
+              setDoc(doc(db, COLLECTIONS.EXPENSES, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
+            }
+          });
+        }
       },
       (err) => console.warn('[Live Sync Expenses Error]', err)
     );
@@ -1128,8 +1203,16 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.DONATIONS),
       (snap) => {
         const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-        const list = deduplicateDonations(rawList);
+        const local = svucStore.getDonations();
+        const list = deduplicateDonations([...rawList, ...local]);
         svucStore.saveDonations(list);
+        if (rawList.length < local.length) {
+          local.forEach((loc) => {
+            if (!rawList.some((r) => r.id === loc.id || r.receiptId === loc.receiptId)) {
+              setDoc(doc(db, COLLECTIONS.DONATIONS, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
+            }
+          });
+        }
       },
       (err) => console.warn('[Live Sync Donations Error]', err)
     );
@@ -1140,12 +1223,40 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.MATERIALS),
       (snap) => {
         const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-        const list = deduplicateMaterials(rawList);
+        const local = svucStore.getMaterials();
+        const list = deduplicateMaterials([...rawList, ...local]);
         svucStore.saveMaterials(list);
+        if (rawList.length < local.length) {
+          local.forEach((loc) => {
+            if (!rawList.some((r) => r.id === loc.id || r.receiptId === loc.receiptId)) {
+              setDoc(doc(db, COLLECTIONS.MATERIALS, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
+            }
+          });
+        }
       },
       (err) => console.warn('[Live Sync Materials Error]', err)
     );
     unsubscribers.push(unsubMat);
+
+    // Receipts
+    const unsubRec = onSnapshot(
+      collection(db, COLLECTIONS.RECEIPTS),
+      (snap) => {
+        const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
+        const local = svucStore.getReceipts();
+        const list = deduplicateReceipts([...rawList, ...local]);
+        svucStore.saveReceipts(list);
+        if (rawList.length < local.length) {
+          local.forEach((loc) => {
+            if (!rawList.some((r) => r.id === loc.id || r.receiptNumber === loc.receiptNumber)) {
+              setDoc(doc(db, COLLECTIONS.RECEIPTS, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
+            }
+          });
+        }
+      },
+      (err) => console.warn('[Live Sync Receipts Error]', err)
+    );
+    unsubscribers.push(unsubRec);
 
     // Festival Events & Schedule
     const unsubEvt = onSnapshot(
@@ -1200,23 +1311,12 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.CONTACT_MESSAGES),
       (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContactMessage));
-        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        list.sort((b, a) => (a.createdAt || '').localeCompare(b.createdAt || ''));
         svucStore.saveContactMessages(list);
       },
       (err) => console.warn('[Live Sync Contact Messages Error]', err)
     );
     unsubscribers.push(unsubMsg);
-
-    // Official Receipts
-    const unsubRec = onSnapshot(
-      collection(db, COLLECTIONS.RECEIPTS),
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
-        svucStore.saveReceipts(list);
-      },
-      (err) => console.warn('[Live Sync Receipts Error]', err)
-    );
-    unsubscribers.push(unsubRec);
 
     // Admin Users Profiles
     const unsubUsr = onSnapshot(

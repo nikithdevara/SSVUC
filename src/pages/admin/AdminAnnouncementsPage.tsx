@@ -277,7 +277,7 @@ export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ 
               type="text"
               required
               value={formData.title}
-              placeholder="e.g. Mahaprasad Timings and Token Counters"
+              placeholder="Enter announcement title"
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />

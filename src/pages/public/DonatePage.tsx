@@ -304,7 +304,7 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
                   <input
                     type="text"
                     required={!anonymous}
-                    placeholder="e.g. Ramesh Varma"
+                    placeholder="Enter your full name"
                     value={donorName}
                     onChange={(e) => setDonorName(e.target.value)}
                     className="w-full p-2.5 text-sm rounded-xl border border-[#C9972B]/30 bg-[#FFF9ED] outline-none focus:border-[#D97706]"
@@ -314,7 +314,7 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
                   <label className="text-xs font-medium text-[#292524]/80 block mb-1">Gothram (Optional for Archana)</label>
                   <input
                     type="text"
-                    placeholder="e.g. Kashyapa / Bharadwaja"
+                    placeholder="Enter your gothram (if applicable)"
                     value={gothram}
                     onChange={(e) => setGothram(e.target.value)}
                     className="w-full p-2.5 text-sm rounded-xl border border-[#C9972B]/30 bg-[#FFF9ED] outline-none focus:border-[#D97706]"
@@ -328,7 +328,7 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
                 <label className="text-xs font-medium text-[#292524]/80 block mb-1">Mobile Number (For SMS/WhatsApp Receipt)</label>
                 <input
                   type="tel"
-                  placeholder="e.g. 9848012345"
+                  placeholder="Enter your 10-digit mobile number"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="w-full p-2.5 text-sm rounded-xl border border-[#C9972B]/30 bg-[#FFF9ED] outline-none focus:border-[#D97706]"
@@ -338,7 +338,7 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
                 <label className="text-xs font-medium text-[#292524]/80 block mb-1">Email Address (Optional)</label>
                 <input
                   type="email"
-                  placeholder="e.g. devotee@example.com"
+                  placeholder="Enter your email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full p-2.5 text-sm rounded-xl border border-[#C9972B]/30 bg-[#FFF9ED] outline-none focus:border-[#D97706]"
@@ -350,7 +350,7 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
               <label className="text-xs font-medium text-[#292524]/80 block mb-1">Devotional Sankalpam / Note (Optional)</label>
               <input
                 type="text"
-                placeholder="e.g. In memory of parents / for child's health & education..."
+                placeholder="Enter your devotional prayer, sankalpam, or family note..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full p-2.5 text-sm rounded-xl border border-[#C9972B]/30 bg-[#FFF9ED] outline-none focus:border-[#D97706]"
@@ -511,7 +511,7 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 425189201923 (12 digits from your UPI app)"
+                  placeholder="Enter 12-digit UPI UTR / Transaction Reference Number"
                   value={utrNumber}
                   onChange={(e) => setUtrNumber(e.target.value)}
                   className="w-full p-2.5 text-xs font-mono rounded-xl border border-amber-300 bg-white outline-none focus:border-[#7F1D1D] focus:ring-2 focus:ring-[#7F1D1D]/10"

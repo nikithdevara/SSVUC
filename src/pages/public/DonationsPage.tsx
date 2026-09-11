@@ -191,7 +191,7 @@ export const DonationsPage: React.FC<DonationsPageProps> = ({ onNavigate }) => {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#D97706]" />
             <input
               type="text"
-              placeholder="Search donor name, receipt ID (e.g. REC-2026-001) or amount..."
+              placeholder="Search donor name, receipt ID (e.g. SSV-2026-C-00001 / SSV-2026-O-00001) or amount..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm rounded-xl bg-white border border-[#C9972B]/30 outline-none focus:border-[#D97706]"

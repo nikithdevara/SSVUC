@@ -79,7 +79,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         {/* Subtle Demo Banner per Section 77 */}
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1 text-center text-[11px] text-amber-900 font-medium flex items-center justify-center space-x-1">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse inline-block mr-1" />
-          <span>Committee Management System — Simulated Stage 3 Demo Mode (Local Persistence Enabled)</span>
+          <span>Committee Management System </span>
         </div>
 
         {/* Scrollable Page Body */}

@@ -6,6 +6,7 @@ import { Printer, Download, Share2, CheckCircle, ShieldCheck, X, MessageSquare, 
 import { useToast } from './Toast';
 import { pdfReceiptService } from '../../services/pdfReceiptService';
 import { svucStore } from '../../services/store';
+import { standardizeReceiptNumber } from '../../services/receiptNumberService';
 
 export interface ReceiptModalProps {
   receipt?: Receipt | null;
@@ -64,9 +65,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       }
       const isApproved = donation.status === 'Approved' || donation.status === 'Verified';
       const isDeclined = donation.status === 'Declined' || donation.status === 'Rejected';
+      const stdReceiptId = standardizeReceiptNumber(donation.receiptId || donation.id, 'MONETARY', donation.paymentMethod);
       return {
-        id: donation.receiptId || donation.id,
-        receiptNumber: donation.receiptId || `REC-2026-${donation.id}`,
+        id: stdReceiptId,
+        receiptNumber: stdReceiptId,
         type: 'MONETARY',
         donationId: donation.id,
         donorName: donation.donorName,
@@ -98,9 +100,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       }
       const isApproved = material.status === 'Approved' || material.status === 'Verified';
       const isDeclined = material.status === 'Declined' || material.status === 'Rejected';
+      const stdReceiptId = standardizeReceiptNumber(material.receiptId || material.id, 'MATERIAL');
       return {
-        id: material.receiptId || material.id,
-        receiptNumber: material.receiptId || `REC-MAT-2026-${material.id}`,
+        id: stdReceiptId,
+        receiptNumber: stdReceiptId,
         type: 'MATERIAL',
         materialDonationId: material.id,
         donorName: material.donorName,

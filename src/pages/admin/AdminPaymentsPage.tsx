@@ -361,7 +361,7 @@ export const AdminPaymentsPage: React.FC<AdminPaymentsPageProps> = ({ onNavigate
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="e.g. Duplicate payment charged during bank timeout / donor request approved by Treasurer"
+                  placeholder="Enter reason for refund (e.g. Duplicate payment charged during bank timeout or donor request)..."
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-stone-300 text-xs focus:outline-none focus:border-[#C9972B]"

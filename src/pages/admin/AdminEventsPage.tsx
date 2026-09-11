@@ -295,7 +295,7 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
               type="text"
               required
               value={formData.title}
-              placeholder="e.g. Maha Ganapathi Homam"
+              placeholder="Enter event title"
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />
@@ -337,7 +337,7 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
                 type="text"
                 required
                 value={formData.time}
-                placeholder="09:00 AM - 12:00 PM"
+                placeholder="Enter time schedule (e.g. 09:00 AM - 12:00 PM)"
                 onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -349,6 +349,7 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
                 type="text"
                 required
                 value={formData.location}
+                placeholder="Enter event venue / location"
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -361,6 +362,7 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
               rows={3}
               required
               value={formData.description}
+              placeholder="Enter event description and seva details..."
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />
@@ -371,6 +373,7 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
             <input
               type="text"
               value={formData.highlights}
+              placeholder="Enter event highlights (e.g. Prasadam, Live Bhajan, Veda Parayanam)"
               onChange={(e) => setFormData({ ...formData, highlights: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />

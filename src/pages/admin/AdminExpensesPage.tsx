@@ -702,7 +702,7 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
                 type="text"
                 required
                 value={formData.expenseName}
-                placeholder="e.g. Stage Sound System Rental"
+                placeholder="Enter expense title (e.g. Stage Sound System Rental)"
                 onChange={(e) => setFormData({ ...formData, expenseName: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -755,7 +755,7 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
                 type="text"
                 required
                 value={formData.vendorName}
-                placeholder="e.g. Sri Balaji Sounds & Lights"
+                placeholder="Enter vendor or payee name"
                 onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />
@@ -914,7 +914,7 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
             <textarea
               rows={2}
               value={formData.description}
-              placeholder="e.g. 5 days sound setup with generators & operator charges"
+              placeholder="Enter bill specifics, scope of work, or remarks..."
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />
@@ -1167,7 +1167,7 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
                 type="text"
                 required
                 value={editReason}
-                placeholder="e.g. Corrected final invoice settlement amount after vendor discount"
+                placeholder="Enter audit reason for updating voucher..."
                 onChange={(e) => setEditReason(e.target.value)}
                 className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
               />

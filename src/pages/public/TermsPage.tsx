@@ -107,7 +107,7 @@ export const TermsPage: React.FC<TermsPageProps> = ({ onNavigate }) => {
           </h2>
           <p>
             For any clarifications regarding festival rules or accounting questions, please visit our Mandapam camp
-            office at Gandhinagar Anjayya Colony, Anakapalle, or reach our committee president at +91 94401 23456.
+            office at Gandhinagar Anjayya Colony, Anakapalle, or reach our committee president at +91 63051 92846.
           </p>
         </div>
       </div>

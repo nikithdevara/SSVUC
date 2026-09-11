@@ -55,7 +55,7 @@ export const initialAdminUsers: AdminUser[] = [
     role: 'SUPER_ADMIN',
     status: 'ACTIVE',
     lastLogin: 'Never',
-    phone: '+91 94401 23456',
+    phone: '+91 63051 92846',
   },
   {
     id: 'USR-02',
@@ -64,7 +64,7 @@ export const initialAdminUsers: AdminUser[] = [
     role: 'TREASURER',
     status: 'ACTIVE',
     lastLogin: 'Never',
-    phone: '+91 98480 67890',
+    phone: '+91 63051 92846',
   },
   {
     id: 'USR-03',
@@ -73,7 +73,7 @@ export const initialAdminUsers: AdminUser[] = [
     role: 'COMMITTEE_ADMIN',
     status: 'ACTIVE',
     lastLogin: 'Never',
-    phone: '+91 94412 88990',
+    phone: '+91 63051 92846',
   },
 ];
 

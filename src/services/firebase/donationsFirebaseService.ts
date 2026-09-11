@@ -180,7 +180,7 @@ export const donationsFirebaseService = {
     const dateStr = data.date || now.toISOString().split('T')[0];
     const sequenceYear = '2026';
 
-    const receiptNumber = await generateSafeReceiptNumber('MONETARY', sequenceYear);
+    const receiptNumber = await generateSafeReceiptNumber('MONETARY', sequenceYear, data.paymentMethod);
     const donationId = `DON-${receiptNumber.replace('SSV-', '')}`;
 
     const newDonation: Donation = {

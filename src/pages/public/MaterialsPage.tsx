@@ -396,7 +396,7 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Sona Masoori Rice, Pure Cow Ghee, Marigolds"
+                      placeholder="Enter material or seva item name (e.g. Rice, Ghee, Flowers)"
                       value={materialName}
                       onChange={(e) => setMaterialName(e.target.value)}
                       className="w-full p-3 rounded-xl border border-[#C9972B]/40 bg-white text-xs sm:text-sm font-semibold text-[#292524] outline-none focus:border-[#7F1D1D]"
@@ -444,7 +444,7 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
                     <input
                       type="text"
                       required
-                      placeholder="kg, Litres, Sets, Pieces, Bags, Tins"
+                      placeholder="Enter unit of measure (e.g. kg, Litres, Bags, Tins)"
                       value={unit}
                       onChange={(e) => setUnit(e.target.value)}
                       className="w-full p-3 rounded-xl border border-[#C9972B]/40 bg-white text-xs sm:text-sm font-semibold text-[#292524] outline-none focus:border-[#7F1D1D]"
@@ -468,7 +468,7 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
                         type="text"
                         disabled={anonymous}
                         required={!anonymous}
-                        placeholder={anonymous ? 'Offering Anonymously' : 'e.g. Smt. Lakshmi & Sri Rao'}
+                        placeholder={anonymous ? 'Offering Anonymously' : 'Enter devotee / family full name'}
                         value={anonymous ? '' : donorName}
                         onChange={(e) => setDonorName(e.target.value)}
                         className={`w-full p-3 rounded-xl border border-[#C9972B]/40 bg-white text-xs sm:text-sm text-[#292524] outline-none focus:border-[#7F1D1D] ${
@@ -483,7 +483,7 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Kasyapa, Bharadwaja, Haritha"
+                        placeholder="Enter your gothram (if applicable)"
                         value={gothram}
                         onChange={(e) => setGothram(e.target.value)}
                         className="w-full p-3 rounded-xl border border-[#C9972B]/40 bg-white text-xs sm:text-sm text-[#292524] outline-none focus:border-[#7F1D1D]"
@@ -511,7 +511,7 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
                       </label>
                       <input
                         type="tel"
-                        placeholder="+91 98480 12345"
+                        placeholder="Enter your 10-digit mobile number"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         className="w-full p-3 rounded-xl border border-[#C9972B]/40 bg-white text-xs sm:text-sm text-[#292524] outline-none focus:border-[#7F1D1D]"
@@ -524,7 +524,7 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
                       </label>
                       <input
                         type="email"
-                        placeholder="devotee@example.com"
+                        placeholder="Enter your email address"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full p-3 rounded-xl border border-[#C9972B]/40 bg-white text-xs sm:text-sm text-[#292524] outline-none focus:border-[#7F1D1D]"
@@ -574,7 +574,7 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
                     </label>
                     <textarea
                       rows={2}
-                      placeholder="e.g. In humble seva for the health and prosperity of family, for Maha Annadanam Day 3..."
+                      placeholder="Enter your devotional prayer, sankalpam, or seva dedication notes..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       className="w-full p-3 rounded-xl border border-[#C9972B]/40 bg-white text-xs sm:text-sm text-[#292524] outline-none focus:border-[#7F1D1D]"

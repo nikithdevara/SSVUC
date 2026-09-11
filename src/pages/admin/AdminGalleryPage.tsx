@@ -252,7 +252,7 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
               type="text"
               required
               value={formData.title}
-              placeholder="e.g. Swarna Kavacham Alankaram"
+              placeholder="Enter photo title"
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />
@@ -294,7 +294,7 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
               type="url"
               required
               value={formData.imageUrl}
-              placeholder="https://..."
+              placeholder="Enter image URL (https://...)"
               onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden mb-2"
             />
@@ -322,7 +322,7 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
             <textarea
               rows={2}
               value={formData.description}
-              placeholder="e.g. Evening floral decoration performed by committee volunteers"
+              placeholder="Enter photo description or notes..."
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full rounded-lg border border-stone-300 p-2 text-xs focus:border-[#7F1D1D] outline-hidden"
             />

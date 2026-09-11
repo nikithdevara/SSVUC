@@ -68,20 +68,40 @@ export function cleanForFirebase<T>(obj: T): any {
 
 /**
  * Atomic Receipt Number generator using Firestore transaction
- * Example format: SSV-2026-D-00001 or SSV-2026-M-00001
+ * Standard format: SSV-YYYY-C-XXXXX (Cash), SSV-YYYY-O-XXXXX (UPI/Online), SSV-YYYY-M-XXXXX (Material)
  */
-export async function generateSafeReceiptNumber(type: 'MONETARY' | 'MATERIAL', year = '2026'): Promise<string> {
+export async function generateSafeReceiptNumber(
+  type: 'MONETARY' | 'MATERIAL',
+  year = '2026',
+  paymentMethod?: string
+): Promise<string> {
+  let prefix = 'O';
+  if (type === 'MATERIAL') {
+    prefix = 'M';
+  } else if (
+    paymentMethod?.trim().toLowerCase() === 'cash' ||
+    paymentMethod?.trim().toLowerCase() === 'cash handover'
+  ) {
+    prefix = 'C';
+  } else {
+    prefix = 'O';
+  }
+
   if (isFirebaseConfigured() && db) {
     try {
       const counterRef = doc(db, COLLECTIONS.SETTINGS, 'counters');
-      const prefix = type === 'MONETARY' ? 'D' : 'M';
-      const field = type === 'MONETARY' ? 'donationCount' : 'materialCount';
+      const field =
+        type === 'MONETARY'
+          ? prefix === 'C'
+            ? 'cashDonationCount'
+            : 'onlineDonationCount'
+          : 'materialCount';
 
       const sequence = await runTransaction(db, async (transaction) => {
         const counterDoc = await transaction.get(counterRef);
         let nextVal = 1;
         if (counterDoc.exists()) {
-          const current = counterDoc.data()[field] || 0;
+          const current = counterDoc.data()[field] || counterDoc.data()['donationCount'] || 0;
           nextVal = current + 1;
           transaction.update(counterRef, {
             [field]: nextVal,
@@ -89,8 +109,8 @@ export async function generateSafeReceiptNumber(type: 'MONETARY' | 'MATERIAL', y
           });
         } else {
           transaction.set(counterRef, {
-            donationCount: type === 'MONETARY' ? 1 : 0,
-            materialCount: type === 'MATERIAL' ? 1 : 0,
+            [field]: 1,
+            donationCount: 1,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });
@@ -107,7 +127,6 @@ export async function generateSafeReceiptNumber(type: 'MONETARY' | 'MATERIAL', y
   // Fallback if Firestore is not available
   const existingCount =
     type === 'MONETARY' ? svucStore.getDonations().length : svucStore.getMaterials().length;
-  const prefix = type === 'MONETARY' ? 'D' : 'M';
   return `SSV-${year}-${prefix}-${String(existingCount + 1).padStart(5, '0')}`;
 }
 

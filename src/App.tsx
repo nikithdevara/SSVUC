@@ -15,6 +15,7 @@ import { CommitteePage } from './pages/public/CommitteePage';
 import { AnnouncementsPage } from './pages/public/AnnouncementsPage';
 import { ContactPage } from './pages/public/ContactPage';
 import { ReceiptDetailPage } from './pages/public/ReceiptDetailPage';
+import { VerifyPage } from './pages/public/VerifyPage';
 
 // Admin Architecture & Layout
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -38,6 +39,7 @@ import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
 import { AccessDenied } from './components/admin/AccessDenied';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/common/Toast';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Services
 import { authService } from './services/authService';
@@ -130,7 +132,7 @@ function AppContent() {
               Committee Administration Login
             </button>
             <p className="text-[10px] text-stone-400">
-              Helpline: {currentSettings.contactPhone || '+91 94401 23456'}
+              Helpline: {currentSettings.contactPhone || '+91 63051 92846'}
             </p>
           </div>
         </div>
@@ -290,8 +292,11 @@ function AppContent() {
       case '/donate':
         return <DonatePage onNavigate={navigate} />;
       case '/donations':
-      case '/verify':
         return <DonationsPage onNavigate={navigate} />;
+      case '/verify':
+      case '/receipts':
+      case '/receipt':
+        return <VerifyPage onNavigate={navigate} />;
       case '/materials':
         return <MaterialsPage onNavigate={navigate} />;
       case '/expenses':
@@ -334,10 +339,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
