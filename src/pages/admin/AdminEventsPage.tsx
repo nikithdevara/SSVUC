@@ -4,6 +4,8 @@ import { EventItem } from '../../types';
 import { svucStore } from '../../services/store';
 import { eventsService } from '../../services/adminService';
 import { authService } from '../../services/authService';
+import { onSnapshot, collection } from 'firebase/firestore';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
 import { AdminBreadcrumbs } from '../../components/admin/AdminBreadcrumbs';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminFilterBar } from '../../components/admin/AdminFilterBar';
@@ -23,6 +25,7 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<EventItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EventItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -39,9 +42,27 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
   };
 
   useEffect(() => {
+    setEvents(svucStore.getEvents());
+
+    let unsub: (() => void) | undefined;
+    if (isFirebaseConfigured() && db) {
+      try {
+        unsub = onSnapshot(collection(db, 'events'), (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as EventItem));
+          live.sort((a, b) => a.date.localeCompare(b.date));
+          setEvents(live);
+        });
+      } catch (err) {
+        console.warn('[Events snapshot listener error]', err);
+      }
+    }
+
     const handleUpdate = () => refreshList();
     window.addEventListener('svuc_store_updated', handleUpdate);
-    return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   const filteredEvents = useMemo(() => {
@@ -72,8 +93,13 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
 
   const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.title.trim()) {
+      showToast('Please enter an event title', 'error');
+      return;
+    }
     try {
-      await eventsService.create({
+      setIsSubmitting(true);
+      const res = await eventsService.create({
         title: formData.title,
         dayNumber: 1,
         date: formData.date,
@@ -84,12 +110,16 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
         published: true,
         highlights: formData.highlights.split(',').map((s) => s.trim()).filter(Boolean),
       });
+      if (res?.event) {
+        setEvents((prev) => [res.event, ...prev.filter((item) => item.id !== res.event.id)]);
+      }
       setIsAddModalOpen(false);
-      refreshList();
       showToast('Event created successfully!', 'success');
     } catch (err: any) {
       console.error('Error creating event:', err);
       showToast(err?.message || 'Failed to create event', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -354,9 +384,10 @@ export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, se
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-xs"
             >
-              Save Event
+              {isSubmitting ? 'Saving Event...' : 'Save Event'}
             </button>
           </div>
         </form>

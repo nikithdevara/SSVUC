@@ -65,25 +65,39 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
     status: 'Approved' as Donation['status'],
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const refreshList = () => {
     setDonations(svucStore.getDonations());
   };
 
   useEffect(() => {
-    if (isFirebaseConfigured() && db) {
-      const unsub = onSnapshot(collection(db, 'donations'), (snapshot) => {
-        const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-        live.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
-        setDonations(live);
-      });
-      return () => unsub();
-    } else {
-      const handleUpdate = () => refreshList();
-      window.addEventListener('svuc_store_updated', handleUpdate);
-      return () => window.removeEventListener('svuc_store_updated', handleUpdate);
-    }
-  }, []);
+    // 1. Initial load
+    setDonations(svucStore.getDonations());
 
+    // 2. Real-time Firestore live listener across network devices
+    let unsub: (() => void) | undefined;
+    if (isFirebaseConfigured() && db) {
+      try {
+        unsub = onSnapshot(collection(db, 'donations'), (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
+          live.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+          setDonations(live);
+        });
+      } catch (err) {
+        console.warn('[Donations snapshot listener error]', err);
+      }
+    }
+
+    // 3. Instant local store event for 0ms immediate UI update
+    const handleUpdate = () => refreshList();
+    window.addEventListener('svuc_store_updated', handleUpdate);
+
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
+  }, []);
 
   // Filter logic
   const filteredDonations = useMemo(() => {
@@ -145,16 +159,44 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
 
   const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.anonymous && !formData.donorName.trim()) {
+      showToast('Please enter the Devotee Name or mark as Anonymous', 'error');
+      return;
+    }
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      showToast('Please enter a valid offering amount', 'error');
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
       const res = await donationsService.create(formData);
+      
+      // Immediately update local state for 0ms visual confirmation
+      setDonations((prev) => [res.donation, ...prev.filter((d) => d.id !== res.donation.id)]);
+      
+      // Close modal immediately
       setIsAddModalOpen(false);
-      refreshList();
-      showToast(`Donation ${res.donation.receiptId} recorded successfully!`, 'success');
-      // Prompt to view receipt immediately
-      setViewReceipt(res.donation);
+
+      // Reset form
+      setFormData({
+        donorName: '',
+        anonymous: false,
+        amount: 1116,
+        paymentMethod: 'UPI',
+        phoneNumber: '',
+        email: '',
+        gothram: '',
+        notes: '',
+        status: authService.hasPermission('donations.approve') ? 'Approved' : 'Pending',
+      });
+
+      showToast(`Offering ${res.donation.receiptId} recorded successfully!`, 'success');
     } catch (err: any) {
       console.error('Error creating donation:', err);
-      showToast(err?.message || 'Failed to record donation', 'error');
+      showToast(err?.message || 'Failed to record offering. Please try again.', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -774,9 +816,10 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              Save & Issue Receipt
+              {isSubmitting ? 'Recording Offering...' : 'Record Offering'}
             </button>
           </div>
         </form>

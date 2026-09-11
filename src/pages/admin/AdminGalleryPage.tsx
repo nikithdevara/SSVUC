@@ -4,6 +4,8 @@ import { GalleryItem } from '../../types';
 import { svucStore } from '../../services/store';
 import { galleryService } from '../../services/adminService';
 import { authService } from '../../services/authService';
+import { onSnapshot, collection } from 'firebase/firestore';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
 import { AdminBreadcrumbs } from '../../components/admin/AdminBreadcrumbs';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminModal } from '../../components/admin/AdminModal';
@@ -21,6 +23,7 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<GalleryItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GalleryItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -35,9 +38,27 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
   };
 
   useEffect(() => {
+    setItems(svucStore.getGallery());
+
+    let unsub: (() => void) | undefined;
+    if (isFirebaseConfigured() && db) {
+      try {
+        unsub = onSnapshot(collection(db, 'gallery'), (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as GalleryItem));
+          live.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          setItems(live);
+        });
+      } catch (err) {
+        console.warn('[Gallery snapshot listener error]', err);
+      }
+    }
+
     const handleUpdate = () => refreshList();
     window.addEventListener('svuc_store_updated', handleUpdate);
-    return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   const filtered = items.filter(
@@ -64,14 +85,27 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
 
   const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.title.trim()) {
+      showToast('Please enter a photo title', 'error');
+      return;
+    }
+    if (!formData.imageUrl.trim()) {
+      showToast('Please enter an image URL or upload an image', 'error');
+      return;
+    }
     try {
-      await galleryService.create(formData);
+      setIsSubmitting(true);
+      const res = await galleryService.create(formData);
+      if (res?.item) {
+        setItems((prev) => [res.item, ...prev.filter((i) => i.id !== res.item.id)]);
+      }
       setIsAddModalOpen(false);
-      refreshList();
       showToast('Media item added to gallery!', 'success');
     } catch (err: any) {
       console.error('Error adding gallery item:', err);
       showToast(err?.message || 'Failed to add media item', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -302,9 +336,10 @@ export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-xs"
             >
-              Add to Gallery
+              {isSubmitting ? 'Adding Photo...' : 'Add to Gallery'}
             </button>
           </div>
         </form>

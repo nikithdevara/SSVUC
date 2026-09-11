@@ -60,23 +60,38 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
     status: 'Approved' as MaterialDonation['status'],
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const refreshList = () => {
     setMaterials(svucStore.getMaterials());
   };
 
   useEffect(() => {
+    // 1. Initial load
+    setMaterials(svucStore.getMaterials());
+
+    // 2. Real-time Firestore live listener across network devices
+    let unsub: (() => void) | undefined;
     if (isFirebaseConfigured() && db) {
-      const unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
-        const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-        live.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
-        setMaterials(live);
-      });
-      return () => unsub();
-    } else {
-      const handleUpdate = () => refreshList();
-      window.addEventListener('svuc_store_updated', handleUpdate);
-      return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+      try {
+        unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
+          live.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+          setMaterials(live);
+        });
+      } catch (err) {
+        console.warn('[Materials snapshot listener error]', err);
+      }
     }
+
+    // 3. Instant local store event for 0ms immediate UI update
+    const handleUpdate = () => refreshList();
+    window.addEventListener('svuc_store_updated', handleUpdate);
+
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
 
@@ -132,15 +147,48 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.materialName.trim()) {
+      showToast('Please enter the Material / Item Name', 'error');
+      return;
+    }
+    if (!formData.quantity || Number(formData.quantity) <= 0) {
+      showToast('Please enter a valid quantity', 'error');
+      return;
+    }
+    if (!formData.anonymous && !formData.donorName.trim()) {
+      showToast('Please enter the Devotee Name or mark as Anonymous', 'error');
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
       const res = await materialsService.create(formData);
+      
+      // Immediately update local state for 0ms visual confirmation
+      setMaterials((prev) => [res.material, ...prev.filter((m) => m.id !== res.material.id)]);
+      
+      // Close modal immediately
       setIsAddModalOpen(false);
-      refreshList();
-      showToast(`Material pledge ${res.material.receiptId} recorded successfully!`, 'success');
-      setViewReceipt(res.material);
+
+      // Reset form
+      setFormData({
+        donorName: '',
+        anonymous: false,
+        materialName: '',
+        category: 'Groceries',
+        quantity: 25,
+        unit: 'kg',
+        phoneNumber: '',
+        notes: '',
+        status: authService.hasPermission('materials.approve') ? 'Approved' : 'Pending',
+      });
+
+      showToast(`Material seva pledge ${res.material.receiptId} recorded successfully!`, 'success');
     } catch (err: any) {
       console.error('Error creating material pledge:', err);
-      showToast(err?.message || 'Failed to record material pledge', 'error');
+      showToast(err?.message || 'Failed to record material pledge. Please try again.', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -697,9 +745,10 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              Register Material & Issue Receipt
+              {isSubmitting ? 'Recording Pledge...' : 'Register Material & Issue Receipt'}
             </button>
           </div>
         </form>

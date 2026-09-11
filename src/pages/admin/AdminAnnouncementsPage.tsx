@@ -4,6 +4,8 @@ import { Announcement } from '../../types';
 import { svucStore } from '../../services/store';
 import { announcementsService } from '../../services/adminService';
 import { authService } from '../../services/authService';
+import { onSnapshot, collection } from 'firebase/firestore';
+import { db, isFirebaseConfigured } from '../../lib/firebase';
 import { AdminBreadcrumbs } from '../../components/admin/AdminBreadcrumbs';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminFilterBar } from '../../components/admin/AdminFilterBar';
@@ -23,6 +25,7 @@ export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Announcement | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentUser = authService.getCurrentUser();
 
@@ -40,9 +43,27 @@ export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ 
   };
 
   useEffect(() => {
+    setAnnouncements(svucStore.getAnnouncements());
+
+    let unsub: (() => void) | undefined;
+    if (isFirebaseConfigured() && db) {
+      try {
+        unsub = onSnapshot(collection(db, 'announcements'), (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement));
+          live.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+          setAnnouncements(live);
+        });
+      } catch (err) {
+        console.warn('[Announcements snapshot listener error]', err);
+      }
+    }
+
     const handleUpdate = () => refreshList();
     window.addEventListener('svuc_store_updated', handleUpdate);
-    return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -72,14 +93,23 @@ export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ 
 
   const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.title.trim() || !formData.content.trim()) {
+      showToast('Please provide both title and content for the announcement', 'error');
+      return;
+    }
     try {
-      await announcementsService.create(formData);
+      setIsSubmitting(true);
+      const res = await announcementsService.create(formData);
+      if (res?.announcement) {
+        setAnnouncements((prev) => [res.announcement, ...prev.filter((a) => a.id !== res.announcement.id)]);
+      }
       setIsAddModalOpen(false);
-      refreshList();
       showToast('Announcement published successfully!', 'success');
     } catch (err: any) {
       console.error('Error creating announcement:', err);
       showToast(err?.message || 'Failed to publish announcement', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -308,9 +338,10 @@ export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ 
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] text-white shadow-xs"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#7F1D1D] hover:bg-[#991B1B] disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-xs"
             >
-              Broadcast Announcement
+              {isSubmitting ? 'Publishing...' : 'Broadcast Announcement'}
             </button>
           </div>
         </form>
