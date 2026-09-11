@@ -26,7 +26,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { svucStore } from '../../services/store';
+import { svucStore, deduplicateMaterials } from '../../services/store';
 import { MaterialDonation, MaterialCategory, Receipt } from '../../types';
 import { ReceiptModal } from '../../components/common/ReceiptModal';
 import { DevotionalHeaderBadge, TraditionalDiya } from '../../components/common/CulturalMotifs';
@@ -98,8 +98,8 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
           collection(db, COLLECTIONS.MATERIALS),
           (snapshot) => {
             const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-            list.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-            setMaterials(list);
+            const deduped = deduplicateMaterials(list);
+            setMaterials(deduped);
           },
           (err) => console.warn('[Live Materials Firestore Stream]', err)
         );

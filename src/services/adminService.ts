@@ -183,18 +183,23 @@ export const donationsService = {
       updatedAt: new Date().toISOString(),
     };
 
+    const targetDocId = original.id || id;
+
     list[index] = updated;
     svucStore.saveDonations(list);
 
     if (isFirebaseConfigured() && db) {
       try {
         const cleanData = cleanForFirebase(updated);
-        await setDoc(doc(db, COLLECTIONS.DONATIONS, id), cleanData, { merge: true });
-        if (original.id && original.id !== id) {
-          await setDoc(doc(db, COLLECTIONS.DONATIONS, original.id), cleanData, { merge: true });
+        // Write ONLY to the single canonical document ID
+        await setDoc(doc(db, COLLECTIONS.DONATIONS, targetDocId), cleanData, { merge: true });
+        
+        // If an alias document was previously created under receiptId or id, clean it up
+        if (id !== targetDocId) {
+          deleteDoc(doc(db, COLLECTIONS.DONATIONS, id)).catch(() => {});
         }
-        if (original.receiptId && original.receiptId !== id) {
-          await setDoc(doc(db, COLLECTIONS.DONATIONS, original.receiptId), cleanData, { merge: true });
+        if (original.receiptId && original.receiptId !== targetDocId) {
+          deleteDoc(doc(db, COLLECTIONS.DONATIONS, original.receiptId)).catch(() => {});
         }
       } catch (err) {
         console.error('[Firestore Donation Update Error]', err);
@@ -447,15 +452,20 @@ export const materialsService = {
       updatedAt: new Date().toISOString(),
     };
 
+    const targetDocId = original.id || id;
+
     list[index] = updated;
     svucStore.saveMaterials(list);
 
     if (isFirebaseConfigured() && db) {
       try {
         const cleanMat = cleanForFirebase(updated);
-        await setDoc(doc(db, COLLECTIONS.MATERIALS, id), cleanMat, { merge: true });
-        if (original.id && original.id !== id) {
-          await setDoc(doc(db, COLLECTIONS.MATERIALS, original.id), cleanMat, { merge: true });
+        await setDoc(doc(db, COLLECTIONS.MATERIALS, targetDocId), cleanMat, { merge: true });
+        if (id !== targetDocId) {
+          deleteDoc(doc(db, COLLECTIONS.MATERIALS, id)).catch(() => {});
+        }
+        if (original.receiptId && original.receiptId !== targetDocId) {
+          deleteDoc(doc(db, COLLECTIONS.MATERIALS, original.receiptId)).catch(() => {});
         }
       } catch (err) {
         console.error('[Firestore Material Update Error]', err);
@@ -668,15 +678,20 @@ export const expensesService = {
       updatedAt: new Date().toISOString(),
     };
 
+    const targetDocId = original.id || id;
+
     list[index] = updated;
     svucStore.saveExpenses(list);
 
     if (isFirebaseConfigured() && db) {
       try {
         const cleanData = cleanForFirebase(updated);
-        await setDoc(doc(db, COLLECTIONS.EXPENSES, id), cleanData, { merge: true });
-        if (original.id && original.id !== id) {
-          await setDoc(doc(db, COLLECTIONS.EXPENSES, original.id), cleanData, { merge: true });
+        await setDoc(doc(db, COLLECTIONS.EXPENSES, targetDocId), cleanData, { merge: true });
+        if (id !== targetDocId) {
+          deleteDoc(doc(db, COLLECTIONS.EXPENSES, id)).catch(() => {});
+        }
+        if (original.receiptVoucherNo && original.receiptVoucherNo !== targetDocId) {
+          deleteDoc(doc(db, COLLECTIONS.EXPENSES, original.receiptVoucherNo)).catch(() => {});
         }
       } catch (err) {
         console.error('[Firestore Expense Update Error]', err);

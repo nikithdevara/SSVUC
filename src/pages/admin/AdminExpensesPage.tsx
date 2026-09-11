@@ -15,7 +15,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Expense } from '../../types';
-import { svucStore } from '../../services/store';
+import { svucStore, deduplicateExpenses } from '../../services/store';
 import { expensesService, reportService } from '../../services/adminService';
 import { authService } from '../../services/authService';
 import { onSnapshot, collection } from 'firebase/firestore';
@@ -105,8 +105,8 @@ export const AdminExpensesPage: React.FC<AdminExpensesPageProps> = ({ onNavigate
       try {
         unsub = onSnapshot(collection(db, 'expenses'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
-          live.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
-          setExpenses(live);
+          const deduped = deduplicateExpenses(live);
+          setExpenses(deduped);
         });
       } catch (err) {
         console.warn('[Expenses snapshot listener error]', err);

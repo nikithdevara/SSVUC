@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { MaterialDonation } from '../../types';
-import { svucStore } from '../../services/store';
+import { svucStore, deduplicateMaterials } from '../../services/store';
 import { materialsService, reportService } from '../../services/adminService';
 import { authService } from '../../services/authService';
 import { onSnapshot, collection } from 'firebase/firestore';
@@ -76,8 +76,8 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
       try {
         unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-          live.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
-          setMaterials(live);
+          const deduped = deduplicateMaterials(live);
+          setMaterials(deduped);
         });
       } catch (err) {
         console.warn('[Materials snapshot listener error]', err);

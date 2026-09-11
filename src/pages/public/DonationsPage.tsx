@@ -11,7 +11,7 @@ import {
   Heart,
   ChevronRight,
 } from 'lucide-react';
-import { svucStore } from '../../services/store';
+import { svucStore, deduplicateDonations } from '../../services/store';
 import { Donation, PaymentMethod } from '../../types';
 import { ReceiptModal } from '../../components/common/ReceiptModal';
 import { DevotionalHeaderBadge } from '../../components/common/CulturalMotifs';
@@ -47,8 +47,8 @@ export const DonationsPage: React.FC<DonationsPageProps> = ({ onNavigate }) => {
           collection(db, COLLECTIONS.DONATIONS),
           (snapshot) => {
             const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-            list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
-            const approved = list.filter((d) => d.status === 'Approved' || d.status === 'Verified');
+            const deduped = deduplicateDonations(list);
+            const approved = deduped.filter((d) => d.status === 'Approved' || d.status === 'Verified');
             setDonations(approved);
           },
           (err) => console.warn('[Live Donations Firestore Stream]', err)

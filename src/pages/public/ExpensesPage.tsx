@@ -11,7 +11,7 @@ import {
   Filter,
   CheckCircle,
 } from 'lucide-react';
-import { svucStore } from '../../services/store';
+import { svucStore, deduplicateExpenses } from '../../services/store';
 import { Expense, ExpenseCategory } from '../../types';
 import { BillModal } from '../../components/common/BillModal';
 import { DevotionalHeaderBadge } from '../../components/common/CulturalMotifs';
@@ -56,8 +56,8 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ onNavigate }) => {
           collection(db, COLLECTIONS.EXPENSES),
           (snapshot) => {
             const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
-            list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
-            const approved = list.filter((e) => e.status === 'Approved' || e.status === 'Paid');
+            const deduped = deduplicateExpenses(list);
+            const approved = deduped.filter((e) => e.status === 'Approved' || e.status === 'Paid');
             setExpenses(approved);
           },
           (err) => console.warn('[Live Expenses Firestore Stream]', err)

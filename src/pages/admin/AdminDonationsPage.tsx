@@ -15,7 +15,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { Donation } from '../../types';
-import { svucStore } from '../../services/store';
+import { svucStore, deduplicateDonations } from '../../services/store';
 import { donationsService, reportService } from '../../services/adminService';
 import { authService } from '../../services/authService';
 import { onSnapshot, collection } from 'firebase/firestore';
@@ -81,8 +81,8 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
       try {
         unsub = onSnapshot(collection(db, 'donations'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-          live.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
-          setDonations(live);
+          const deduped = deduplicateDonations(live);
+          setDonations(deduped);
         });
       } catch (err) {
         console.warn('[Donations snapshot listener error]', err);

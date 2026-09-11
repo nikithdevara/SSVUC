@@ -67,9 +67,150 @@ export function setLocal<T>(key: string, data: T) {
   }
 }
 
-// Generate initial receipts
-function buildInitialReceipts(): Receipt[] {
-  return [];
+/**
+ * Deduplicate donations by canonical ID / Receipt ID
+ */
+export function deduplicateDonations(donations: Donation[]): Donation[] {
+  const map = new Map<string, Donation>();
+  for (const item of donations) {
+    if (!item) continue;
+    const key = (item.receiptId || item.id || '').trim();
+    if (!key) continue;
+
+    let existingKey = map.has(key) ? key : null;
+    if (!existingKey) {
+      for (const [k, v] of map.entries()) {
+        if (
+          (item.id && (v.id === item.id || v.receiptId === item.id)) ||
+          (item.receiptId && (v.id === item.receiptId || v.receiptId === item.receiptId))
+        ) {
+          existingKey = k;
+          break;
+        }
+      }
+    }
+
+    if (!existingKey) {
+      map.set(key, item);
+    } else {
+      const existing = map.get(existingKey)!;
+      const isItemApproved = item.status === 'Approved' || item.status === 'Verified';
+      const isExistingApproved = existing.status === 'Approved' || existing.status === 'Verified';
+      const isItemNewer = (item.updatedAt || item.createdAt || '') >= (existing.updatedAt || existing.createdAt || '');
+
+      const merged: Donation = {
+        ...existing,
+        ...item,
+        status: isItemApproved ? item.status : (isExistingApproved ? existing.status : (isItemNewer ? item.status : existing.status)),
+        receiptId: item.receiptId || existing.receiptId,
+        id: existing.id || item.id,
+      };
+      map.set(existingKey, merged);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+}
+
+/**
+ * Deduplicate material pledges by canonical ID / Receipt ID
+ */
+export function deduplicateMaterials(materials: MaterialDonation[]): MaterialDonation[] {
+  const map = new Map<string, MaterialDonation>();
+  for (const item of materials) {
+    if (!item) continue;
+    const key = (item.receiptId || item.id || '').trim();
+    if (!key) continue;
+
+    let existingKey = map.has(key) ? key : null;
+    if (!existingKey) {
+      for (const [k, v] of map.entries()) {
+        if (
+          (item.id && (v.id === item.id || v.receiptId === item.id)) ||
+          (item.receiptId && (v.id === item.receiptId || v.receiptId === item.receiptId))
+        ) {
+          existingKey = k;
+          break;
+        }
+      }
+    }
+
+    if (!existingKey) {
+      map.set(key, item);
+    } else {
+      const existing = map.get(existingKey)!;
+      const isItemApproved = item.status === 'Approved' || item.status === 'Verified';
+      const isExistingApproved = existing.status === 'Approved' || existing.status === 'Verified';
+      const isItemNewer = (item.updatedAt || item.createdAt || '') >= (existing.updatedAt || existing.createdAt || '');
+
+      const merged: MaterialDonation = {
+        ...existing,
+        ...item,
+        status: isItemApproved ? item.status : (isExistingApproved ? existing.status : (isItemNewer ? item.status : existing.status)),
+        receiptId: item.receiptId || existing.receiptId,
+        id: existing.id || item.id,
+      };
+      map.set(existingKey, merged);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+}
+
+/**
+ * Deduplicate expenses by canonical ID / Voucher No
+ */
+export function deduplicateExpenses(expenses: Expense[]): Expense[] {
+  const map = new Map<string, Expense>();
+  for (const item of expenses) {
+    if (!item) continue;
+    const key = (item.receiptVoucherNo || item.id || '').trim();
+    if (!key) continue;
+
+    let existingKey = map.has(key) ? key : null;
+    if (!existingKey) {
+      for (const [k, v] of map.entries()) {
+        if (
+          (item.id && (v.id === item.id || v.receiptVoucherNo === item.id)) ||
+          (item.receiptVoucherNo && (v.id === item.receiptVoucherNo || v.receiptVoucherNo === item.receiptVoucherNo))
+        ) {
+          existingKey = k;
+          break;
+        }
+      }
+    }
+
+    if (!existingKey) {
+      map.set(key, item);
+    } else {
+      const existing = map.get(existingKey)!;
+      const isItemApproved = item.status === 'Approved';
+      const isExistingApproved = existing.status === 'Approved';
+      const isItemNewer = (item.updatedAt || item.createdAt || '') >= (existing.updatedAt || existing.createdAt || '');
+
+      const merged: Expense = {
+        ...existing,
+        ...item,
+        status: isItemApproved ? item.status : (isExistingApproved ? existing.status : (isItemNewer ? item.status : existing.status)),
+        receiptVoucherNo: item.receiptVoucherNo || existing.receiptVoucherNo,
+        id: existing.id || item.id,
+      };
+      map.set(existingKey, merged);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+}
+
+/**
+ * Deduplicate receipts
+ */
+export function deduplicateReceipts(receipts: Receipt[]): Receipt[] {
+  const map = new Map<string, Receipt>();
+  for (const item of receipts) {
+    if (!item) continue;
+    const key = (item.receiptNumber || item.id || '').trim();
+    if (!key) continue;
+    map.set(key, item);
+  }
+  return Array.from(map.values()).sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
 }
 
 
@@ -148,7 +289,8 @@ export const svucStore = {
 
   // --- Donations ---
   getDonations(): Donation[] {
-    return getLocal<Donation[]>(STORAGE_KEYS.DONATIONS, initialDonations);
+    const raw = getLocal<Donation[]>(STORAGE_KEYS.DONATIONS, initialDonations);
+    return deduplicateDonations(raw);
   },
   addDonation(data: {
     donorName: string;
@@ -209,11 +351,11 @@ export const svucStore = {
       status: isApproved ? 'VERIFIED' : 'PENDING',
     };
 
-    const updatedDonations = [newDonation, ...donations];
+    const updatedDonations = deduplicateDonations([newDonation, ...donations]);
     setLocal(STORAGE_KEYS.DONATIONS, updatedDonations);
 
     const receipts = this.getReceipts();
-    setLocal(STORAGE_KEYS.RECEIPTS, [newReceipt, ...receipts]);
+    setLocal(STORAGE_KEYS.RECEIPTS, deduplicateReceipts([newReceipt, ...receipts]));
 
     if (isFirebaseConfigured() && db) {
       setDoc(doc(db, COLLECTIONS.DONATIONS, newDonation.id), cleanForFirebase(newDonation), { merge: true }).catch(console.error);
@@ -231,8 +373,8 @@ export const svucStore = {
   },
   deleteDonation(id: string) {
     const list = this.getDonations();
-    const target = list.find((d) => d.id === id);
-    const updated = list.filter((d) => d.id !== id);
+    const target = list.find((d) => d.id === id || d.receiptId === id);
+    const updated = list.filter((d) => d.id !== id && d.receiptId !== id);
     setLocal(STORAGE_KEYS.DONATIONS, updated);
     if (target) {
       // Also clean up associated receipt
@@ -243,7 +385,11 @@ export const svucStore = {
       setLocal(STORAGE_KEYS.RECEIPTS, updatedReceipts);
       if (isFirebaseConfigured() && db) {
         deleteDoc(doc(db, COLLECTIONS.DONATIONS, id)).catch(console.error);
+        if (target.id && target.id !== id) {
+          deleteDoc(doc(db, COLLECTIONS.DONATIONS, target.id)).catch(console.error);
+        }
         if (target.receiptId) {
+          deleteDoc(doc(db, COLLECTIONS.DONATIONS, target.receiptId)).catch(console.error);
           deleteDoc(doc(db, COLLECTIONS.RECEIPTS, target.receiptId)).catch(console.error);
         }
       }
@@ -253,7 +399,8 @@ export const svucStore = {
 
   // --- Material Donations ---
   getMaterials(): MaterialDonation[] {
-    return getLocal<MaterialDonation[]>(STORAGE_KEYS.MATERIALS, initialMaterialDonations);
+    const raw = getLocal<MaterialDonation[]>(STORAGE_KEYS.MATERIALS, initialMaterialDonations);
+    return deduplicateMaterials(raw);
   },
   addMaterial(data: {
     donorName: string;
@@ -804,25 +951,29 @@ export const svucStore = {
 
   // --- Donations Persistence ---
   saveDonations(donations: Donation[]): void {
-    setLocal(STORAGE_KEYS.DONATIONS, donations);
+    const deduped = deduplicateDonations(donations);
+    setLocal(STORAGE_KEYS.DONATIONS, deduped);
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Expenses Persistence ---
   saveExpenses(expenses: Expense[]): void {
-    setLocal(STORAGE_KEYS.EXPENSES, expenses);
+    const deduped = deduplicateExpenses(expenses);
+    setLocal(STORAGE_KEYS.EXPENSES, deduped);
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Materials Persistence ---
   saveMaterials(materials: MaterialDonation[]): void {
-    setLocal(STORAGE_KEYS.MATERIALS, materials);
+    const deduped = deduplicateMaterials(materials);
+    setLocal(STORAGE_KEYS.MATERIALS, deduped);
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Receipts Persistence ---
   saveReceipts(receipts: Receipt[]): void {
-    setLocal(STORAGE_KEYS.RECEIPTS, receipts);
+    const deduped = deduplicateReceipts(receipts);
+    setLocal(STORAGE_KEYS.RECEIPTS, deduped);
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
@@ -964,8 +1115,8 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubExp = onSnapshot(
       collection(db, COLLECTIONS.EXPENSES),
       (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
-        list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+        const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+        const list = deduplicateExpenses(rawList);
         svucStore.saveExpenses(list);
       },
       (err) => console.warn('[Live Sync Expenses Error]', err)
@@ -976,8 +1127,8 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubDon = onSnapshot(
       collection(db, COLLECTIONS.DONATIONS),
       (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-        list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+        const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
+        const list = deduplicateDonations(rawList);
         svucStore.saveDonations(list);
       },
       (err) => console.warn('[Live Sync Donations Error]', err)
@@ -988,8 +1139,8 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubMat = onSnapshot(
       collection(db, COLLECTIONS.MATERIALS),
       (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-        list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+        const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
+        const list = deduplicateMaterials(rawList);
         svucStore.saveMaterials(list);
       },
       (err) => console.warn('[Live Sync Materials Error]', err)
