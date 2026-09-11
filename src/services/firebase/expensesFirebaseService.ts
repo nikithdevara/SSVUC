@@ -5,6 +5,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -301,13 +302,9 @@ export const expensesFirebaseService = {
 
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, COLLECTIONS.EXPENSES, id), {
-          archived: true,
-          status: 'Archived',
-          serverUpdatedAt: serverTimestamp(),
-        });
+        await deleteDoc(doc(db, COLLECTIONS.EXPENSES, id));
       } catch (err) {
-        console.warn('[Delete Expense] Error archiving in Firestore:', err);
+        console.warn('[Delete Expense] Error deleting in Firestore:', err);
       }
     }
 

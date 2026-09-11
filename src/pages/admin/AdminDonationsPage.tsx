@@ -83,8 +83,7 @@ export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNaviga
       try {
         unsub = onSnapshot(collection(db, 'donations'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-          const currentLocal = svucStore.getDonations();
-          const deduped = deduplicateDonations([...live, ...currentLocal]);
+          const deduped = deduplicateDonations(live);
           setDonations(deduped);
         });
       } catch (err) {

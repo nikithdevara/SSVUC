@@ -308,14 +308,26 @@ export const donationsService = {
   },
 
   async delete(id: string): Promise<boolean> {
+    const list = svucStore.getDonations();
+    const target = list.find((d) => d.id === id || d.receiptId === id);
     svucStore.deleteDonation(id);
     if (isFirebaseConfigured() && db) {
       try {
-        await deleteDoc(doc(db, COLLECTIONS.DONATIONS, id));
+        await deleteDoc(doc(db, COLLECTIONS.DONATIONS, id)).catch(() => {});
+        if (target) {
+          if (target.id && target.id !== id) {
+            await deleteDoc(doc(db, COLLECTIONS.DONATIONS, target.id)).catch(() => {});
+          }
+          if (target.receiptId) {
+            await deleteDoc(doc(db, COLLECTIONS.DONATIONS, target.receiptId)).catch(() => {});
+            await deleteDoc(doc(db, COLLECTIONS.RECEIPTS, target.receiptId)).catch(() => {});
+          }
+        }
       } catch (err) {
         console.error('[Firestore Donation Delete Error]', err);
       }
     }
+    window.dispatchEvent(new Event('svuc_store_updated'));
     return true;
   },
 };
@@ -556,14 +568,26 @@ export const materialsService = {
   },
 
   async delete(id: string) {
+    const list = svucStore.getMaterials();
+    const target = list.find((m) => m.id === id || m.receiptId === id);
     svucStore.deleteMaterial(id);
     if (isFirebaseConfigured() && db) {
       try {
-        await deleteDoc(doc(db, COLLECTIONS.MATERIALS, id));
+        await deleteDoc(doc(db, COLLECTIONS.MATERIALS, id)).catch(() => {});
+        if (target) {
+          if (target.id && target.id !== id) {
+            await deleteDoc(doc(db, COLLECTIONS.MATERIALS, target.id)).catch(() => {});
+          }
+          if (target.receiptId) {
+            await deleteDoc(doc(db, COLLECTIONS.MATERIALS, target.receiptId)).catch(() => {});
+            await deleteDoc(doc(db, COLLECTIONS.RECEIPTS, target.receiptId)).catch(() => {});
+          }
+        }
       } catch (err) {
         console.error('[Firestore Material Delete Error]', err);
       }
     }
+    window.dispatchEvent(new Event('svuc_store_updated'));
     return true;
   },
 };

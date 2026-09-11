@@ -53,8 +53,7 @@ export const AdminReceiptsPage: React.FC = () => {
       try {
         unsub = onSnapshot(collection(db, 'receipts'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
-          const currentLocal = svucStore.getReceipts();
-          const deduped = deduplicateReceipts([...live, ...currentLocal]);
+          const deduped = deduplicateReceipts(live);
           setReceipts(deduped);
         });
       } catch (err) {

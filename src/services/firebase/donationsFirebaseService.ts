@@ -5,6 +5,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -451,21 +452,19 @@ export const donationsFirebaseService = {
   },
 
   /**
-   * Soft delete or permanent removal with audit
-   */
   async deleteDonation(id: string, reason?: string): Promise<void> {
     const existing = await this.getDonation(id);
     svucStore.deleteDonation(id);
 
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, COLLECTIONS.DONATIONS, id), {
-          archived: true,
-          status: 'Archived',
-          serverUpdatedAt: serverTimestamp(),
-        });
+        await deleteDoc(doc(db, COLLECTIONS.DONATIONS, id));
+        if (existing?.receiptId) {
+          await deleteDoc(doc(db, COLLECTIONS.DONATIONS, existing.receiptId)).catch(() => {});
+          await deleteDoc(doc(db, COLLECTIONS.RECEIPTS, existing.receiptId)).catch(() => {});
+        }
       } catch (err) {
-        console.warn('[Delete Donation] Error archiving in Firestore:', err);
+        console.warn('[Delete Donation] Error deleting from Firestore:', err);
       }
     }
 

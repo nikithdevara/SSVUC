@@ -5,6 +5,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -357,13 +358,13 @@ export const materialsFirebaseService = {
 
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, COLLECTIONS.MATERIALS, id), {
-          archived: true,
-          status: 'Archived',
-          serverUpdatedAt: serverTimestamp(),
-        });
+        await deleteDoc(doc(db, COLLECTIONS.MATERIALS, id));
+        if (existing?.receiptId) {
+          await deleteDoc(doc(db, COLLECTIONS.MATERIALS, existing.receiptId)).catch(() => {});
+          await deleteDoc(doc(db, COLLECTIONS.RECEIPTS, existing.receiptId)).catch(() => {});
+        }
       } catch (err) {
-        console.warn('[Delete Material] Error archiving:', err);
+        console.warn('[Delete Material] Error deleting from Firestore:', err);
       }
     }
 

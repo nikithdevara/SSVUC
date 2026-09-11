@@ -78,8 +78,7 @@ export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNaviga
       try {
         unsub = onSnapshot(collection(db, 'materials'), (snapshot) => {
           const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-          const currentLocal = svucStore.getMaterials();
-          const deduped = deduplicateMaterials([...live, ...currentLocal]);
+          const deduped = deduplicateMaterials(live);
           setMaterials(deduped);
         });
       } catch (err) {

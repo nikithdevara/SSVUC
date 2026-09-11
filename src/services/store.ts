@@ -502,6 +502,7 @@ export const svucStore = {
       }
       this.addAuditLog('Donation', id, 'DELETE', `Removed donation record of ₹${target.amount} by ${target.donorName}`);
     }
+    window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Material Donations ---
@@ -622,6 +623,7 @@ export const svucStore = {
       }
       this.addAuditLog('Material', id, 'DELETE', `Removed material donation ${target.materialName} by ${target.donorName}`);
     }
+    window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Expenses ---
@@ -687,6 +689,7 @@ export const svucStore = {
       }
       this.addAuditLog('Expense', id, 'DELETE', `Deleted expense voucher ${target.receiptVoucherNo} (₹${target.amount})`);
     }
+    window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Receipts ---
@@ -1183,16 +1186,8 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.EXPENSES),
       (snap) => {
         const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
-        const local = svucStore.getExpenses();
-        const list = deduplicateExpenses([...rawList, ...local]);
+        const list = deduplicateExpenses(rawList);
         svucStore.saveExpenses(list);
-        if (rawList.length < local.length) {
-          local.forEach((loc) => {
-            if (!rawList.some((r) => r.id === loc.id || r.receiptVoucherNo === loc.receiptVoucherNo)) {
-              setDoc(doc(db, COLLECTIONS.EXPENSES, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
-            }
-          });
-        }
       },
       (err) => console.warn('[Live Sync Expenses Error]', err)
     );
@@ -1203,16 +1198,8 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.DONATIONS),
       (snap) => {
         const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-        const local = svucStore.getDonations();
-        const list = deduplicateDonations([...rawList, ...local]);
+        const list = deduplicateDonations(rawList);
         svucStore.saveDonations(list);
-        if (rawList.length < local.length) {
-          local.forEach((loc) => {
-            if (!rawList.some((r) => r.id === loc.id || r.receiptId === loc.receiptId)) {
-              setDoc(doc(db, COLLECTIONS.DONATIONS, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
-            }
-          });
-        }
       },
       (err) => console.warn('[Live Sync Donations Error]', err)
     );
@@ -1223,16 +1210,8 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.MATERIALS),
       (snap) => {
         const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-        const local = svucStore.getMaterials();
-        const list = deduplicateMaterials([...rawList, ...local]);
+        const list = deduplicateMaterials(rawList);
         svucStore.saveMaterials(list);
-        if (rawList.length < local.length) {
-          local.forEach((loc) => {
-            if (!rawList.some((r) => r.id === loc.id || r.receiptId === loc.receiptId)) {
-              setDoc(doc(db, COLLECTIONS.MATERIALS, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
-            }
-          });
-        }
       },
       (err) => console.warn('[Live Sync Materials Error]', err)
     );
@@ -1243,16 +1222,8 @@ export function initGlobalFirestoreSync(): () => void {
       collection(db, COLLECTIONS.RECEIPTS),
       (snap) => {
         const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
-        const local = svucStore.getReceipts();
-        const list = deduplicateReceipts([...rawList, ...local]);
+        const list = deduplicateReceipts(rawList);
         svucStore.saveReceipts(list);
-        if (rawList.length < local.length) {
-          local.forEach((loc) => {
-            if (!rawList.some((r) => r.id === loc.id || r.receiptNumber === loc.receiptNumber)) {
-              setDoc(doc(db, COLLECTIONS.RECEIPTS, loc.id), cleanForFirebase(loc), { merge: true }).catch(() => { });
-            }
-          });
-        }
       },
       (err) => console.warn('[Live Sync Receipts Error]', err)
     );

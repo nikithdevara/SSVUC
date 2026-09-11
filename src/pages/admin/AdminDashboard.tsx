@@ -63,29 +63,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   };
 
   useEffect(() => {
+    let unsubD: (() => void) | undefined;
+    let unsubE: (() => void) | undefined;
+    let unsubM: (() => void) | undefined;
+
     if (isFirebaseConfigured() && db) {
-      const unsubD = onSnapshot(collection(db, 'donations'), (snap) => {
+      unsubD = onSnapshot(collection(db, 'donations'), (snap) => {
         const live = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
         setDonationsList(live);
       });
-      const unsubE = onSnapshot(collection(db, 'expenses'), (snap) => {
+      unsubE = onSnapshot(collection(db, 'expenses'), (snap) => {
         const live = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
         setExpensesList(live);
       });
-      const unsubM = onSnapshot(collection(db, 'materials'), (snap) => {
+      unsubM = onSnapshot(collection(db, 'materials'), (snap) => {
         const live = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
         setMaterialsList(live);
       });
-      return () => {
-        unsubD();
-        unsubE();
-        unsubM();
-      };
-    } else {
-      const handleUpdate = () => refreshData();
-      window.addEventListener('svuc_store_updated', handleUpdate);
-      return () => window.removeEventListener('svuc_store_updated', handleUpdate);
     }
+
+    const handleUpdate = () => refreshData();
+    window.addEventListener('svuc_store_updated', handleUpdate);
+
+    return () => {
+      if (unsubD) unsubD();
+      if (unsubE) unsubE();
+      if (unsubM) unsubM();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   // Compute live summary based on real-time collections
