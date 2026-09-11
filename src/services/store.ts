@@ -37,7 +37,7 @@ export const STORAGE_KEYS = {
   EVENTS: 'svuc_events_2026_clean',
   ANNOUNCEMENTS: 'svuc_announcements_2026_clean',
   GALLERY: 'svuc_gallery_2026_clean',
-  AUDIT_LOGS: 'svuc_audit_logs_2026_clean',
+  AUDIT_LOGS: 'svuc_audit_logs_fresh_start_2026',
   USERS: 'svuc_admin_users_2026_clean',
   SETTINGS: 'svuc_settings_2026_clean',
   CURRENT_USER: 'svuc_current_user_2026_clean',
@@ -930,6 +930,10 @@ export const svucStore = {
       details: reason ? `${details} (Reason: ${reason})` : details,
     };
     setLocal(STORAGE_KEYS.AUDIT_LOGS, [newLog, ...logs.slice(0, 150)]);
+  },
+  clearAuditLogs() {
+    setLocal(STORAGE_KEYS.AUDIT_LOGS, []);
+    window.dispatchEvent(new Event('svuc_store_updated'));
   },
 
   // --- Notifications ---
