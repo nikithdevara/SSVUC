@@ -31,7 +31,7 @@ import { ReceiptModal } from '../../components/common/ReceiptModal';
 import { useToast } from '../../components/common/Toast';
 import { paymentService } from '../../services/paymentService';
 import { generateReceiptNumber } from '../../services/receiptNumberService';
-import { donationsFirebaseService } from '../../services/firebase/donationsFirebaseService';
+import { donationsService } from '../../services/adminService';
 
 interface DonatePageProps {
   onNavigate: (route: string) => void;
@@ -48,34 +48,34 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
   const [amount, setAmount] = useState<number>(1001);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [donorName, setDonorName] = useState<string>('');
+  const [anonymous, setAnonymous] = useState<boolean>(false);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [gothram, setGothram] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
-  const [anonymous, setAnonymous] = useState<boolean>(false);
   const [notes, setNotes] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
   const [utrNumber, setUtrNumber] = useState<string>('');
   const [copiedUpi, setCopiedUpi] = useState<boolean>(false);
 
-  // Payment Tracking State
+  // Generated State
   const [currentOrderId, setCurrentOrderId] = useState<string>('');
+  const [generatedReceipt, setGeneratedReceipt] = useState<Receipt | null>(null);
   const [verifiedPayment, setVerifiedPayment] = useState<PaymentRecord | null>(null);
   const [failureReason, setFailureReason] = useState<string>('');
-  const [generatedReceipt, setGeneratedReceipt] = useState<Receipt | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
 
-  const gatewayConfig = paymentService.getConfig();
-  const finalAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
+  const finalAmount = customAmount ? Number(customAmount) : amount;
 
-  const committeeSettings = svucStore.getSettings();
-  const upiId = committeeSettings.upiId || '8919982789@axl';
-  const upiHolder = committeeSettings.upiQrHolder || 'MANGARAPU DHANUSH SAI';
-  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiHolder)}&am=${finalAmount}&cu=INR&tn=${encodeURIComponent('Ganesh Utsav 2026 Offering')}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUrl)}&margin=10`;
+  // Static committee UPI credentials
+  const upiId = '9440100000@upi';
+  const upiHolder = 'Sri Siddhi Vinayaka Utsava Committee';
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiHolder)}&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(`Ganesh Utsav 2026 Offering - ${anonymous ? 'Devotee' : donorName || 'Devotee'}`)}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUrl)}&margin=10`;
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiId);
     setCopiedUpi(true);
-    showToast(`UPI ID copied: ${upiId}`, 'success');
+    showToast('UPI ID copied to clipboard!', 'success');
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
@@ -114,68 +114,41 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
     setStep(3);
 
     // Step 2: Register offering and verify details
-    setTimeout(() => {
-      if (simulateCancel) {
-        paymentService.cancelPayment(intent.orderId, 'User dismissed payment modal.');
-        setFailureReason('Payment submission was cancelled.');
-        setStep(5);
-        return;
-      }
+    setTimeout(async () => {
+      try {
+        if (simulateCancel) {
+          paymentService.cancelPayment(intent.orderId, 'User dismissed payment modal.');
+          setFailureReason('Payment submission was cancelled.');
+          setStep(5);
+          return;
+        }
 
-      if (simulateFailure) {
-        paymentService.failPayment(intent.orderId, 'Payment recording error.');
-        setFailureReason('Submission could not be recorded.');
-        setStep(5);
-        return;
-      }
+        if (simulateFailure) {
+          paymentService.failPayment(intent.orderId, 'Payment recording error.');
+          setFailureReason('Submission could not be recorded.');
+          setStep(5);
+          return;
+        }
 
-      const generatedPaymentId = utrNumber.trim() || `UPI_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-      const verification = paymentService.verifyPayment({
-        orderId: intent.orderId,
-        paymentId: generatedPaymentId,
-        amount: finalAmount,
-        currency: 'INR',
-        isDemo: false,
-      });
+        const generatedPaymentId = utrNumber.trim() || `UPI_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+        const verification = paymentService.verifyPayment({
+          orderId: intent.orderId,
+          paymentId: generatedPaymentId,
+          amount: finalAmount,
+          currency: 'INR',
+          isDemo: false,
+        });
 
-      if (!verification.verified) {
-        setFailureReason(verification.message);
-        setStep(5);
-        return;
-      }
+        if (!verification.verified) {
+          setFailureReason(verification.message);
+          setStep(5);
+          return;
+        }
 
-      setVerifiedPayment(verification.paymentRecord);
+        setVerifiedPayment(verification.paymentRecord);
 
-      // Record approved donation in store
-      const allDonations = svucStore.getDonations();
-      const newSeq = allDonations.length + 1;
-      const officialReceiptNum = generateReceiptNumber('MONETARY', newSeq);
-
-      const { receipt, donation } = svucStore.addDonation({
-        donorName: anonymous ? 'Devotee (Anonymous)' : donorName,
-        anonymous,
-        amount: finalAmount,
-        paymentMethod,
-        phoneNumber,
-        email,
-        gothram,
-        notes: utrNumber.trim() ? `${notes ? notes + ' | ' : ''}UTR: ${utrNumber.trim()}` : notes,
-        status: 'Pending',
-      });
-
-      // Update donation with payment details
-      donation.paymentStatus = 'paid';
-      donation.paymentProvider = paymentMethod === 'UPI' ? 'UPI_INTENT' : 'CASH_DESK';
-      donation.paymentId = generatedPaymentId;
-      donation.orderId = intent.orderId;
-      donation.signatureVerified = true;
-      donation.receiptId = officialReceiptNum;
-      receipt.receiptNumber = officialReceiptNum;
-      receipt.status = 'PENDING';
-
-      // Sync to Firebase Cloud Firestore directly
-      donationsFirebaseService
-        .createDonation({
+        // Record offering using unified donationsService
+        const res = await donationsService.create({
           donorName: anonymous ? 'Devotee (Anonymous)' : donorName,
           anonymous,
           amount: finalAmount,
@@ -185,34 +158,58 @@ export const DonatePage: React.FC<DonatePageProps> = ({ onNavigate }) => {
           gothram,
           notes: utrNumber.trim() ? `${notes ? notes + ' | ' : ''}UTR/UPI Ref: ${utrNumber.trim()}` : notes,
           status: 'Pending',
-        })
-        .catch((err) => console.warn('[Firestore Offering Sync Error]', err));
-
-      // Send notification to Super Admin & Treasurer
-      svucStore.addNotification({
-        title: 'New Offering Awaiting Verification',
-        message: `Devotee ${donation.donorName} submitted an offering of ₹${donation.amount.toLocaleString('en-IN')} (${donation.paymentMethod}${utrNumber.trim() ? ` · UTR: ${utrNumber.trim()}` : ''}). Review in /admin/donations.`,
-        type: 'warning',
-        link: '/admin/donations',
-        donationId: donation.id,
-        createdAt: new Date().toISOString(),
-      });
-
-      setGeneratedReceipt(receipt);
-      setStep(4);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#D97706', '#7F1D1D', '#F59E0B', '#166534', '#FEF08A'],
         });
-      } catch (err) {
-        // Ignored if canvas confetti not supported
+
+        // Send notification to Super Admin & Treasurer
+        try {
+          svucStore.addNotification({
+            title: 'New Offering Awaiting Verification',
+            message: `Devotee ${res.donation.donorName} submitted an offering of ₹${res.donation.amount.toLocaleString('en-IN')} (${res.donation.paymentMethod}${utrNumber.trim() ? ` · UTR: ${utrNumber.trim()}` : ''}). Review in /admin/donations.`,
+            type: 'warning',
+            link: '/admin/donations',
+            donationId: res.donation.id,
+            createdAt: new Date().toISOString(),
+          });
+        } catch {
+          // ignore
+        }
+
+        setGeneratedReceipt(res.receipt);
+        setStep(4);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        try {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#D97706', '#7F1D1D', '#F59E0B', '#166534', '#FEF08A'],
+          });
+        } catch {
+          // Ignored if canvas confetti not supported
+        }
+      } catch (err: any) {
+        console.error('Error in handleInitiatePayment:', err);
+        try {
+          const fallbackRes = svucStore.addDonation({
+            donorName: anonymous ? 'Devotee (Anonymous)' : donorName,
+            anonymous,
+            amount: finalAmount,
+            paymentMethod,
+            phoneNumber,
+            email,
+            gothram,
+            notes: utrNumber.trim() ? `${notes ? notes + ' | ' : ''}UTR/UPI Ref: ${utrNumber.trim()}` : notes,
+            status: 'Pending',
+          });
+          setGeneratedReceipt(fallbackRes.receipt);
+          setStep(4);
+        } catch (fallbackErr) {
+          setFailureReason('Could not complete submission. Please try again or contact the committee counter.');
+          setStep(5);
+        }
       }
-    }, 1200);
+    }, 600);
   };
 
   return (
