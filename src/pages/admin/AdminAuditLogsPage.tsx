@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   FileText,
   User,
+  Trash2,
 } from 'lucide-react';
 import { AuditLog } from '../../types';
 import { svucStore } from '../../services/store';
@@ -18,6 +19,11 @@ import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminFilterBar } from '../../components/admin/AdminFilterBar';
 import { AdminTable, Column } from '../../components/admin/AdminTable';
 import { AdminModal } from '../../components/admin/AdminModal';
+import { ConfirmationModal } from '../../components/admin/ConfirmationModal';
+import { useToast } from '../../components/common/Toast';
+import { isFirebaseConfigured, db } from '../../lib/firebase';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { COLLECTIONS } from '../../services/firebase/firestoreService';
 
 interface AdminAuditLogsPageProps {
   onNavigate: (route: string) => void;
@@ -25,6 +31,7 @@ interface AdminAuditLogsPageProps {
 }
 
 export const AdminAuditLogsPage: React.FC<AdminAuditLogsPageProps> = ({ onNavigate, selectedId }) => {
+  const { showToast } = useToast();
   const [logs, setLogs] = useState<AuditLog[]>(svucStore.getAuditLogs());
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('ALL');
@@ -33,6 +40,7 @@ export const AdminAuditLogsPage: React.FC<AdminAuditLogsPageProps> = ({ onNaviga
   const pageSize = 15;
 
   const [detailModalLog, setDetailModalLog] = useState<AuditLog | null>(null);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   const refreshList = () => {
     setLogs(svucStore.getAuditLogs());
@@ -87,6 +95,33 @@ export const AdminAuditLogsPage: React.FC<AdminAuditLogsPageProps> = ({ onNaviga
       'Audit Reason': l.auditReason || '',
     }));
     reportService.exportCSV('SSV_Security_Audit_Trail_2026', rows);
+  };
+
+  const handleClearAllLogs = async () => {
+    try {
+      svucStore.clearAuditLogs();
+      setLogs([]);
+      localStorage.removeItem('svuc_audit_logs_2026_clean');
+      localStorage.removeItem('svuc_audit_logs_fresh_start_2026');
+      localStorage.setItem('svuc_audit_logs_fresh_start_2026', JSON.stringify([]));
+
+      if (isFirebaseConfigured() && db) {
+        try {
+          const snap = await getDocs(collection(db, COLLECTIONS.AUDIT_LOGS));
+          const deletes = snap.docs.map((d) => deleteDoc(doc(db, COLLECTIONS.AUDIT_LOGS, d.id)));
+          await Promise.all(deletes);
+        } catch (err) {
+          console.warn('[Clear Firestore Audit Logs Error]', err);
+        }
+      }
+      showToast('All audit logs have been permanently cleared for a fresh start.', 'success');
+    } catch (err: any) {
+      console.error('Failed to clear audit logs:', err);
+      showToast('Failed to clear audit logs.', 'error');
+    } finally {
+      setIsClearModalOpen(false);
+      refreshList();
+    }
   };
 
   const renderActionBadge = (action: AuditLog['action']) => {
@@ -215,13 +250,23 @@ export const AdminAuditLogsPage: React.FC<AdminAuditLogsPageProps> = ({ onNaviga
         title="Immutable Security & Financial Audit Trail"
         subtitle="Permanent chronological record of every financial alteration, user action, and approval event"
         actions={
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 transition-colors shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-stone-500" />
-            <span>Export Audit Log</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleExportCSV}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-stone-500" />
+              <span>Export Audit Log</span>
+            </button>
+            <button
+              onClick={() => setIsClearModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 transition-colors shadow-2xs cursor-pointer"
+              title="Clear all audit logs"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+              <span>Clear Logs</span>
+            </button>
+          </div>
         }
       />
 
@@ -380,6 +425,19 @@ export const AdminAuditLogsPage: React.FC<AdminAuditLogsPageProps> = ({ onNaviga
             </div>
           </div>
         </AdminModal>
+      )}
+
+      {/* Confirmation Modal for Clearing Audit Logs */}
+      {isClearModalOpen && (
+        <ConfirmationModal
+          isOpen={true}
+          title="Clear Entire Audit Trail?"
+          message="Are you sure you want to permanently clear all audit log records? This will purge all audit logs from both cloud and local stores for a clean start."
+          confirmLabel="Clear All Logs"
+          variant="danger"
+          onConfirm={handleClearAllLogs}
+          onCancel={() => setIsClearModalOpen(false)}
+        />
       )}
     </div>
   );
