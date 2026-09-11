@@ -23,6 +23,7 @@ import { AdminTable, Column } from '../../components/admin/AdminTable';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { ConfirmationModal } from '../../components/admin/ConfirmationModal';
 import { ReceiptModal } from '../../components/common/ReceiptModal';
+import { useToast } from '../../components/common/Toast';
 
 interface AdminMaterialsPageProps {
   onNavigate: (route: string) => void;
@@ -30,6 +31,7 @@ interface AdminMaterialsPageProps {
 }
 
 export const AdminMaterialsPage: React.FC<AdminMaterialsPageProps> = ({ onNavigate, selectedId }) => {
+  const { showToast } = useToast();
   const [materials, setMaterials] = useState<MaterialDonation[]>(svucStore.getMaterials());
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');

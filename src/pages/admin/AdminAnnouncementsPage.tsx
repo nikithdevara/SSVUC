@@ -11,6 +11,7 @@ import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminFilterBar } from '../../components/admin/AdminFilterBar';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { ConfirmationModal } from '../../components/admin/ConfirmationModal';
+import { useToast } from '../../components/common/Toast';
 
 interface AdminAnnouncementsPageProps {
   onNavigate: (route: string) => void;
@@ -18,6 +19,7 @@ interface AdminAnnouncementsPageProps {
 }
 
 export const AdminAnnouncementsPage: React.FC<AdminAnnouncementsPageProps> = ({ onNavigate }) => {
+  const { showToast } = useToast();
   const [announcements, setAnnouncements] = useState<Announcement[]>(svucStore.getAnnouncements());
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');

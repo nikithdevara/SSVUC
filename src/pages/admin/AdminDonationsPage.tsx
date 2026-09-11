@@ -27,6 +27,7 @@ import { AdminTable, Column } from '../../components/admin/AdminTable';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { ConfirmationModal } from '../../components/admin/ConfirmationModal';
 import { ReceiptModal } from '../../components/common/ReceiptModal';
+import { useToast } from '../../components/common/Toast';
 
 interface AdminDonationsPageProps {
   onNavigate: (route: string) => void;
@@ -34,6 +35,7 @@ interface AdminDonationsPageProps {
 }
 
 export const AdminDonationsPage: React.FC<AdminDonationsPageProps> = ({ onNavigate, selectedId }) => {
+  const { showToast } = useToast();
   const [donations, setDonations] = useState<Donation[]>(svucStore.getDonations());
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');

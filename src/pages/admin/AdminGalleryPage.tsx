@@ -10,6 +10,7 @@ import { AdminBreadcrumbs } from '../../components/admin/AdminBreadcrumbs';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { ConfirmationModal } from '../../components/admin/ConfirmationModal';
+import { useToast } from '../../components/common/Toast';
 
 interface AdminGalleryPageProps {
   onNavigate: (route: string) => void;
@@ -17,6 +18,7 @@ interface AdminGalleryPageProps {
 }
 
 export const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onNavigate }) => {
+  const { showToast } = useToast();
   const [items, setItems] = useState<GalleryItem[]>(svucStore.getGallery());
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 

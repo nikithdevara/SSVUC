@@ -11,6 +11,7 @@ import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { AdminFilterBar } from '../../components/admin/AdminFilterBar';
 import { AdminModal } from '../../components/admin/AdminModal';
 import { ConfirmationModal } from '../../components/admin/ConfirmationModal';
+import { useToast } from '../../components/common/Toast';
 
 interface AdminEventsPageProps {
   onNavigate: (route: string) => void;
@@ -18,6 +19,7 @@ interface AdminEventsPageProps {
 }
 
 export const AdminEventsPage: React.FC<AdminEventsPageProps> = ({ onNavigate, selectedId }) => {
+  const { showToast } = useToast();
   const [events, setEvents] = useState<EventItem[]>(svucStore.getEvents());
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
