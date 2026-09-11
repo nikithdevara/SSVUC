@@ -32,25 +32,21 @@ service cloud.firestore {
       return isAuthenticated();
     }
 
-    // Public Collections - Read-Only for Public, Write for Committee Admins
+    // Public Collections & Operations
     match /settings/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /events/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /announcements/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /gallery/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     // Public Contact Inquiries / Devotee Messages

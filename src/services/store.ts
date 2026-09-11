@@ -24,8 +24,8 @@ import {
   initialSettings,
 } from '../data/mockData';
 import { db, isFirebaseConfigured } from '../lib/firebase';
-import { COLLECTIONS } from './firebase/firestoreService';
-import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { COLLECTIONS, cleanForFirebase } from './firebase/firestoreService';
+import { collection, doc, getDoc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { seedService } from './firebase/seedService';
 
 export const STORAGE_KEYS = {
@@ -82,6 +82,9 @@ export const svucStore = {
     const current = this.getSettings();
     const updated = { ...current, ...newSettings };
     setLocal(STORAGE_KEYS.SETTINGS, updated);
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.SETTINGS, 'committee'), cleanForFirebase(updated), { merge: true }).catch(console.error);
+    }
     this.addAuditLog('Settings', 'SETTING', 'UPDATE', 'Updated committee configuration details.');
     return updated;
   },
@@ -136,6 +139,9 @@ export const svucStore = {
     };
     const updated = [newUser, ...users];
     setLocal(STORAGE_KEYS.USERS, updated);
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.USERS, newUser.id), cleanForFirebase(newUser), { merge: true }).catch(console.error);
+    }
     this.addAuditLog('System', newUser.id, 'CREATE', `Added admin user ${newUser.name} (${newUser.role})`);
     return newUser;
   },
@@ -209,6 +215,11 @@ export const svucStore = {
     const receipts = this.getReceipts();
     setLocal(STORAGE_KEYS.RECEIPTS, [newReceipt, ...receipts]);
 
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.DONATIONS, newDonation.id), cleanForFirebase(newDonation), { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanForFirebase(newReceipt), { merge: true }).catch(console.error);
+    }
+
     this.addAuditLog(
       'Donation',
       id,
@@ -230,6 +241,12 @@ export const svucStore = {
         (r) => r.donationId !== id && r.id !== target.receiptId && r.receiptNumber !== target.receiptId && r.id !== id
       );
       setLocal(STORAGE_KEYS.RECEIPTS, updatedReceipts);
+      if (isFirebaseConfigured() && db) {
+        deleteDoc(doc(db, COLLECTIONS.DONATIONS, id)).catch(console.error);
+        if (target.receiptId) {
+          deleteDoc(doc(db, COLLECTIONS.RECEIPTS, target.receiptId)).catch(console.error);
+        }
+      }
       this.addAuditLog('Donation', id, 'DELETE', `Removed donation record of ₹${target.amount} by ${target.donorName}`);
     }
   },
@@ -311,6 +328,11 @@ export const svucStore = {
     const receipts = this.getReceipts();
     setLocal(STORAGE_KEYS.RECEIPTS, [newReceipt, ...receipts]);
 
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.MATERIALS, newMaterial.id), cleanForFirebase(newMaterial), { merge: true }).catch(console.error);
+      setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanForFirebase(newReceipt), { merge: true }).catch(console.error);
+    }
+
     this.addAuditLog(
       'Material',
       id,
@@ -332,6 +354,12 @@ export const svucStore = {
         (r) => r.materialDonationId !== id && r.id !== target.receiptId && r.receiptNumber !== target.receiptId && r.id !== id
       );
       setLocal(STORAGE_KEYS.RECEIPTS, updatedReceipts);
+      if (isFirebaseConfigured() && db) {
+        deleteDoc(doc(db, COLLECTIONS.MATERIALS, id)).catch(console.error);
+        if (target.receiptId) {
+          deleteDoc(doc(db, COLLECTIONS.RECEIPTS, target.receiptId)).catch(console.error);
+        }
+      }
       this.addAuditLog('Material', id, 'DELETE', `Removed material donation ${target.materialName} by ${target.donorName}`);
     }
   },
@@ -373,6 +401,9 @@ export const svucStore = {
     };
 
     setLocal(STORAGE_KEYS.EXPENSES, [newExpense, ...list]);
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.EXPENSES, newExpense.id), cleanForFirebase(newExpense), { merge: true }).catch(console.error);
+    }
     this.addAuditLog(
       'Expense',
       id,
@@ -387,6 +418,9 @@ export const svucStore = {
     const updated = list.filter((e) => e.id !== id);
     setLocal(STORAGE_KEYS.EXPENSES, updated);
     if (target) {
+      if (isFirebaseConfigured() && db) {
+        deleteDoc(doc(db, COLLECTIONS.EXPENSES, id)).catch(console.error);
+      }
       this.addAuditLog('Expense', id, 'DELETE', `Deleted expense voucher ${target.receiptVoucherNo} (₹${target.amount})`);
     }
   },
@@ -523,6 +557,9 @@ export const svucStore = {
       id: `EVT-${String(list.length + 1).padStart(2, '0')}`,
     };
     setLocal(STORAGE_KEYS.EVENTS, [...list, newEvent]);
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.EVENTS, newEvent.id), cleanForFirebase(newEvent), { merge: true }).catch(console.error);
+    }
     this.addAuditLog('Event', newEvent.id, 'CREATE', `Created festival event: ${newEvent.title}`);
     return newEvent;
   },
@@ -530,6 +567,9 @@ export const svucStore = {
     const list = this.getEvents();
     const updated = list.filter((e) => e.id !== id);
     setLocal(STORAGE_KEYS.EVENTS, updated);
+    if (isFirebaseConfigured() && db) {
+      deleteDoc(doc(db, COLLECTIONS.EVENTS, id)).catch(console.error);
+    }
     this.addAuditLog('Event', id, 'DELETE', `Deleted festival event ID ${id}`);
   },
 
@@ -545,6 +585,9 @@ export const svucStore = {
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     };
     setLocal(STORAGE_KEYS.ANNOUNCEMENTS, [newAnn, ...list]);
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, newAnn.id), cleanForFirebase(newAnn), { merge: true }).catch(console.error);
+    }
     this.addAuditLog('Announcement', newAnn.id, 'CREATE', `Published announcement: ${newAnn.title}`);
     return newAnn;
   },
@@ -552,6 +595,9 @@ export const svucStore = {
     const list = this.getAnnouncements();
     const updated = list.filter((a) => a.id !== id);
     setLocal(STORAGE_KEYS.ANNOUNCEMENTS, updated);
+    if (isFirebaseConfigured() && db) {
+      deleteDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id)).catch(console.error);
+    }
     this.addAuditLog('Announcement', id, 'DELETE', `Removed announcement ID ${id}`);
   },
 
@@ -566,12 +612,18 @@ export const svucStore = {
       id: `GAL-${String(list.length + 1).padStart(2, '0')}`,
     };
     setLocal(STORAGE_KEYS.GALLERY, [newItem, ...list]);
+    if (isFirebaseConfigured() && db) {
+      setDoc(doc(db, COLLECTIONS.GALLERY, newItem.id), cleanForFirebase(newItem), { merge: true }).catch(console.error);
+    }
     return newItem;
   },
   deleteGalleryItem(id: string) {
     const list = this.getGallery();
     const updated = list.filter((g) => g.id !== id);
     setLocal(STORAGE_KEYS.GALLERY, updated);
+    if (isFirebaseConfigured() && db) {
+      deleteDoc(doc(db, COLLECTIONS.GALLERY, id)).catch(console.error);
+    }
   },
 
   // --- Audit Logs ---
@@ -912,11 +964,9 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubExp = onSnapshot(
       collection(db, COLLECTIONS.EXPENSES),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
-          list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
-          svucStore.saveExpenses(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+        list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+        svucStore.saveExpenses(list);
       },
       (err) => console.warn('[Live Sync Expenses Error]', err)
     );
@@ -926,11 +976,9 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubDon = onSnapshot(
       collection(db, COLLECTIONS.DONATIONS),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
-          list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
-          svucStore.saveDonations(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
+        list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+        svucStore.saveDonations(list);
       },
       (err) => console.warn('[Live Sync Donations Error]', err)
     );
@@ -940,11 +988,9 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubMat = onSnapshot(
       collection(db, COLLECTIONS.MATERIALS),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
-          list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
-          svucStore.saveMaterials(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
+        list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+        svucStore.saveMaterials(list);
       },
       (err) => console.warn('[Live Sync Materials Error]', err)
     );
@@ -954,11 +1000,9 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubEvt = onSnapshot(
       collection(db, COLLECTIONS.EVENTS),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as EventItem));
-          list.sort((a, b) => (a.dayNumber || 0) - (b.dayNumber || 0));
-          svucStore.saveEvents(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as EventItem));
+        list.sort((a, b) => (a.dayNumber || 0) - (b.dayNumber || 0));
+        svucStore.saveEvents(list);
       },
       (err) => console.warn('[Live Sync Events Error]', err)
     );
@@ -968,11 +1012,9 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubAnn = onSnapshot(
       collection(db, COLLECTIONS.ANNOUNCEMENTS),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement));
-          list.sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
-          svucStore.saveAnnouncements(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement));
+        list.sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
+        svucStore.saveAnnouncements(list);
       },
       (err) => console.warn('[Live Sync Announcements Error]', err)
     );
@@ -982,10 +1024,8 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubGal = onSnapshot(
       collection(db, COLLECTIONS.GALLERY),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as GalleryItem));
-          svucStore.saveGallery(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as GalleryItem));
+        svucStore.saveGallery(list);
       },
       (err) => console.warn('[Live Sync Gallery Error]', err)
     );
@@ -1008,11 +1048,9 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubMsg = onSnapshot(
       collection(db, COLLECTIONS.CONTACT_MESSAGES),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContactMessage));
-          list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-          svucStore.saveContactMessages(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContactMessage));
+        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        svucStore.saveContactMessages(list);
       },
       (err) => console.warn('[Live Sync Contact Messages Error]', err)
     );
@@ -1022,10 +1060,8 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubRec = onSnapshot(
       collection(db, COLLECTIONS.RECEIPTS),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
-          svucStore.saveReceipts(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
+        svucStore.saveReceipts(list);
       },
       (err) => console.warn('[Live Sync Receipts Error]', err)
     );
@@ -1035,10 +1071,8 @@ export function initGlobalFirestoreSync(): () => void {
     const unsubUsr = onSnapshot(
       collection(db, COLLECTIONS.USERS),
       (snap) => {
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminUser));
-          svucStore.saveAdminUsers(list);
-        }
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminUser));
+        svucStore.saveAdminUsers(list);
       },
       (err) => console.warn('[Live Sync Users Error]', err)
     );

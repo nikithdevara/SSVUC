@@ -4,7 +4,7 @@ import {
   Auth,
   setPersistence,
   browserLocalPersistence,
-  connectAuthEmulator,
+  signInAnonymously,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -30,15 +30,15 @@ export interface FirebaseEnvConfig {
 }
 
 /**
- * Read Vite environment variables safely
+ * Read Vite environment variables with production fallbacks for ssv-utsava
  */
 export const firebaseEnv: FirebaseEnvConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDDfhqKBKOF-6BARt1i-BlqBFeCfEaN4m0',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'ssv-utsava.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'ssv-utsava',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'ssv-utsava.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '886601227019',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:886601227019:web:794fe5a120158e929d600e',
 };
 
 /**
@@ -114,6 +114,10 @@ if (validation.isConfigured) {
     // Persist session across browser restarts
     setPersistence(auth, browserLocalPersistence).catch((err) => {
       console.warn('[Firebase Auth] Could not enable local persistence:', err);
+    });
+    // Attempt anonymous sign-in in background to establish authenticated Firebase context
+    signInAnonymously(auth).catch(() => {
+      // Ignored if anonymous auth provider is disabled in console
     });
     db = getFirestore(app);
     storage = getStorage(app);
