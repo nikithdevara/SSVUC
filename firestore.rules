@@ -1,106 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Operational Collections for Sri Siddhi Vinayaka Utsava Committee 2026
+    match /settings/{docId} { allow read, write: if true; }
+    match /events/{docId} { allow read, write: if true; }
+    match /announcements/{docId} { allow read, write: if true; }
+    match /gallery/{docId} { allow read, write: if true; }
+    match /expenses/{docId} { allow read, write: if true; }
+    match /donations/{docId} { allow read, write: if true; }
+    match /materials/{docId} { allow read, write: if true; }
+    match /receipts/{docId} { allow read, write: if true; }
+    match /contactMessages/{docId} { allow read, write: if true; }
+    match /messages/{docId} { allow read, write: if true; }
+    match /payments/{docId} { allow read, write: if true; }
+    match /auditLogs/{docId} { allow read, write: if true; }
+    match /audit_logs/{docId} { allow read, write: if true; }
+    match /users/{docId} { allow read, write: if true; }
+    match /admin_users/{docId} { allow read, write: if true; }
+    match /notifications/{docId} { allow read, write: if true; }
     
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function getUserData() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
-        : exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
-          ? get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data
-          : {};
-    }
-    
-    function isSuperAdmin() {
-      return isAuthenticated() && (getUserData().role == 'SUPER_ADMIN' || getUserData().role == 'super_admin');
-    }
-    
-    function isTreasurer() {
-      return isAuthenticated() && (
-        getUserData().role == 'TREASURER' || 
-        getUserData().role == 'treasurer' || 
-        getUserData().role == 'SUPER_ADMIN' || 
-        getUserData().role == 'super_admin'
-      );
-    }
-    
-    function isCommitteeAdmin() {
-      return isAuthenticated();
-    }
-
-    // Public Collections & Operations
-    match /settings/{docId} {
-      allow read, write: if true;
-    }
-
-    match /events/{docId} {
-      allow read, write: if true;
-    }
-
-    match /announcements/{docId} {
-      allow read, write: if true;
-    }
-
-    match /gallery/{docId} {
-      allow read, write: if true;
-    }
-
-    // Public Contact Inquiries / Devotee Messages
-    match /messages/{docId} {
-      allow read, create, update, delete: if true;
-    }
-    match /contactMessages/{docId} {
-      allow read, create, update, delete: if true;
-    }
-
-    // Monetary Donations
-    match /donations/{docId} {
-      allow read, create, update, delete: if true;
-    }
-
-    // Material Donations
-    match /materials/{docId} {
-      allow read, create, update, delete: if true;
-    }
-
-    // Expenses - Financial Management & Public Transparency
-    match /expenses/{docId} {
-      allow read, create, update, delete: if true;
-    }
-
-    // Digital Receipts - Public Verification & Admin Management
-    match /receipts/{receiptId} {
-      allow read, create, update, delete: if true;
-    }
-
-    // Payment Gateway Logs & Reconciliation
-    match /payments/{paymentId} {
-      allow read, write: if true;
-    }
-
-    // Audit Logs - Immutable Append-Only Ledger
-    match /audit_logs/{logId} {
-      allow read, write: if true;
-    }
-    match /auditLogs/{logId} {
-      allow read, write: if true;
-    }
-
-    // Admin Users Management
-    match /users/{userId} {
-      allow read, write: if true;
-    }
-    match /admin_users/{userId} {
-      allow read, write: if true;
-    }
-
-    // Admin Notifications
-    match /notifications/{notificationId} {
+    // Master fallback rule for all festival documents
+    match /{document=**} {
       allow read, write: if true;
     }
   }
 }
+

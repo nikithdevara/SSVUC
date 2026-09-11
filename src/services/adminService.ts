@@ -23,7 +23,7 @@ import { galleryFirebaseService } from './firebase/galleryFirebaseService';
 import { usersFirebaseService } from './firebase/usersFirebaseService';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { COLLECTIONS } from './firebase/firestoreService';
-import { isFirebaseConfigured, db } from '../lib/firebase';
+import { isFirebaseConfigured, db, getFriendlyFirebaseErrorMessage } from '../lib/firebase';
 
 /**
  * Remove any undefined properties recursively to prevent Firestore SDK validation errors
@@ -125,6 +125,7 @@ export const donationsService = {
         await setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true });
       } catch (err) {
         console.error('[Firestore Donation Create Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -197,6 +198,7 @@ export const donationsService = {
         }
       } catch (err) {
         console.error('[Firestore Donation Update Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -233,6 +235,7 @@ export const donationsService = {
             await setDoc(doc(db, COLLECTIONS.RECEIPTS, receipts[rIdx].id), cleanRec, { merge: true });
           } catch (err) {
             console.error('[Firestore Receipt Update Error]', err);
+            throw new Error(getFriendlyFirebaseErrorMessage(err));
           }
         }
       }
@@ -397,6 +400,7 @@ export const materialsService = {
         await setDoc(doc(db, COLLECTIONS.RECEIPTS, newReceipt.id), cleanRec, { merge: true });
       } catch (err) {
         console.error('[Firestore Material Create Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -455,6 +459,7 @@ export const materialsService = {
         }
       } catch (err) {
         console.error('[Firestore Material Update Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -743,6 +748,7 @@ export const expensesService = {
         }
       } catch (err) {
         console.error('[Firestore Expense Delete Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -768,6 +774,7 @@ export const eventsService = {
         await setDoc(doc(db, COLLECTIONS.EVENTS, res.id), cleanForFirebase(res), { merge: true });
       } catch (err) {
         console.error('[Firestore Event Create Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
     return res;
@@ -787,6 +794,7 @@ export const eventsService = {
         await setDoc(doc(db, COLLECTIONS.EVENTS, id), cleanForFirebase(updated), { merge: true });
       } catch (err) {
         console.error('[Firestore Event Update Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -802,6 +810,7 @@ export const eventsService = {
         await deleteDoc(doc(db, COLLECTIONS.EVENTS, id));
       } catch (err) {
         console.error('[Firestore Event Delete Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
     return true;
@@ -824,6 +833,7 @@ export const announcementsService = {
         await setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, res.id), cleanForFirebase(res), { merge: true });
       } catch (err) {
         console.error('[Firestore Announcement Create Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
     return res;
@@ -843,6 +853,7 @@ export const announcementsService = {
         await setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id), cleanForFirebase(updated), { merge: true });
       } catch (err) {
         console.error('[Firestore Announcement Update Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -858,6 +869,7 @@ export const announcementsService = {
         await deleteDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, id));
       } catch (err) {
         console.error('[Firestore Announcement Delete Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
     return true;
@@ -880,6 +892,7 @@ export const galleryService = {
         await setDoc(doc(db, COLLECTIONS.GALLERY, res.id), cleanForFirebase(res), { merge: true });
       } catch (err) {
         console.error('[Firestore Gallery Create Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
     auditService.logAction('Gallery', res.id, 'CREATE', `Added photo to gallery: ${res.title} (${res.category})`);
@@ -900,6 +913,7 @@ export const galleryService = {
         await setDoc(doc(db, COLLECTIONS.GALLERY, id), cleanForFirebase(updated), { merge: true });
       } catch (err) {
         console.error('[Firestore Gallery Update Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
 
@@ -915,6 +929,7 @@ export const galleryService = {
         await deleteDoc(doc(db, COLLECTIONS.GALLERY, id));
       } catch (err) {
         console.error('[Firestore Gallery Delete Error]', err);
+        throw new Error(getFriendlyFirebaseErrorMessage(err));
       }
     }
     auditService.logAction('Gallery', id, 'DELETE', `Deleted gallery image ID ${id}`);
