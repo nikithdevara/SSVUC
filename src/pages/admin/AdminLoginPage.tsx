@@ -48,7 +48,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
     try {
       const res = await login(email.trim(), password);
       if (res.success) {
-        onNavigate('/admin/dashboard');
+        if (email.toLowerCase().includes('developer') || res.user?.role === 'DEVELOPER') {
+          onNavigate('/admin/developer');
+        } else {
+          onNavigate('/admin/dashboard');
+        }
       } else {
         setError(res.error || 'Authentication failed. Please verify your credentials and try again.');
       }

@@ -235,7 +235,7 @@ export interface AuditLog {
   diff?: any;
 }
 
-export type AdminRole = 'SUPER_ADMIN' | 'TREASURER' | 'COMMITTEE_ADMIN';
+export type AdminRole = 'SUPER_ADMIN' | 'TREASURER' | 'COMMITTEE_ADMIN' | 'DEVELOPER';
 
 export type Permission =
   | 'donations.view'
@@ -280,7 +280,8 @@ export type Permission =
   | 'receipts.void'
   | 'messages.view'
   | 'messages.manage'
-  | 'notifications.view';
+  | 'notifications.view'
+  | 'developer.manage';
 
 export interface AdminUser {
   id: string;

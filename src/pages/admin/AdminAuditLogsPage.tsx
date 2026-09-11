@@ -258,14 +258,6 @@ export const AdminAuditLogsPage: React.FC<AdminAuditLogsPageProps> = ({ onNaviga
               <Download className="w-3.5 h-3.5 text-stone-500" />
               <span>Export Audit Log</span>
             </button>
-            <button
-              onClick={() => setIsClearModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 transition-colors shadow-2xs cursor-pointer"
-              title="Clear all audit logs"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-red-600" />
-              <span>Clear Logs</span>
-            </button>
           </div>
         }
       />

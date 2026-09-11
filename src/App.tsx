@@ -33,6 +33,7 @@ import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminReceiptsPage } from './pages/admin/AdminReceiptsPage';
+import { AdminDeveloperPage } from './pages/admin/AdminDeveloperPage';
 
 import { AdminNotificationsPage } from './pages/admin/AdminNotificationsPage';
 import { AdminMessagesPage } from './pages/admin/AdminMessagesPage';
@@ -251,6 +252,14 @@ function AppContent() {
           <AdminUsersPage onNavigate={navigate} />
         ) : (
           <AccessDenied onNavigate={navigate} requiredPermission="users.view" />
+        );
+      }
+
+      if (currentRoute.startsWith('/admin/developer') || currentRoute.startsWith('/admin/dev')) {
+        return authService.hasPermission('developer.manage') || authService.isDeveloper() ? (
+          <AdminDeveloperPage onNavigate={navigate} />
+        ) : (
+          <AccessDenied onNavigate={navigate} requiredPermission="developer.manage" />
         );
       }
 

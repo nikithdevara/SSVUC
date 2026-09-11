@@ -53,20 +53,21 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({
   if (!isOpen) return null;
 
   const navItems = [
-    { label: 'Dashboard', route: '/admin', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'TREASURER'] },
-    { label: 'Offerings', route: '/admin/donations', icon: DollarSign, roles: ['SUPER_ADMIN', 'TREASURER'] },
-    { label: 'Official Receipts', route: '/admin/receipts', icon: FileCheck, roles: ['SUPER_ADMIN', 'TREASURER'] },
-    { label: 'Material Seva', route: '/admin/materials', icon: Package, roles: ['SUPER_ADMIN', 'TREASURER'] },
-    { label: 'Expenses', route: '/admin/expenses', icon: FileText, roles: ['SUPER_ADMIN', 'TREASURER'] },
-    { label: 'Notifications', route: '/admin/notifications', icon: Bell, roles: ['SUPER_ADMIN', 'COMMITTEE_ADMIN', 'TREASURER'] },
-    { label: 'Devotee Messages', route: '/admin/messages', icon: Mail, roles: ['SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
-    { label: 'Festival Events', route: '/admin/events', icon: Calendar, roles: ['SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
-    { label: 'Announcements', route: '/admin/announcements', icon: Bell, roles: ['SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
-    { label: 'Gallery', route: '/admin/gallery', icon: Image, roles: ['SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
-    { label: 'Reports', route: '/admin/reports', icon: BarChart3, roles: ['SUPER_ADMIN', 'TREASURER'] },
-    { label: 'Audit Logs', route: '/admin/audit-logs', icon: ShieldCheck, roles: ['SUPER_ADMIN'] },
-    { label: 'Users', route: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
-    { label: 'Settings', route: '/admin/settings', icon: Settings, roles: ['SUPER_ADMIN'] },
+    { label: 'Dashboard', route: '/admin', icon: LayoutDashboard, roles: ['DEVELOPER', 'SUPER_ADMIN', 'TREASURER'] },
+    { label: 'Offerings', route: '/admin/donations', icon: DollarSign, roles: ['DEVELOPER', 'SUPER_ADMIN', 'TREASURER'] },
+    { label: 'Official Receipts', route: '/admin/receipts', icon: FileCheck, roles: ['DEVELOPER', 'SUPER_ADMIN', 'TREASURER'] },
+    { label: 'Material Seva', route: '/admin/materials', icon: Package, roles: ['DEVELOPER', 'SUPER_ADMIN', 'TREASURER'] },
+    { label: 'Expenses', route: '/admin/expenses', icon: FileText, roles: ['DEVELOPER', 'SUPER_ADMIN', 'TREASURER'] },
+    { label: 'Notifications', route: '/admin/notifications', icon: Bell, roles: ['DEVELOPER', 'SUPER_ADMIN', 'COMMITTEE_ADMIN', 'TREASURER'] },
+    { label: 'Devotee Messages', route: '/admin/messages', icon: Mail, roles: ['DEVELOPER', 'SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
+    { label: 'Festival Events', route: '/admin/events', icon: Calendar, roles: ['DEVELOPER', 'SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
+    { label: 'Announcements', route: '/admin/announcements', icon: Bell, roles: ['DEVELOPER', 'SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
+    { label: 'Gallery', route: '/admin/gallery', icon: Image, roles: ['DEVELOPER', 'SUPER_ADMIN', 'COMMITTEE_ADMIN'] },
+    { label: 'Reports', route: '/admin/reports', icon: BarChart3, roles: ['DEVELOPER', 'SUPER_ADMIN', 'TREASURER'] },
+    { label: 'Audit Logs', route: '/admin/audit-logs', icon: ShieldCheck, roles: ['DEVELOPER', 'SUPER_ADMIN'] },
+    { label: 'Users', route: '/admin/users', icon: Users, roles: ['DEVELOPER', 'SUPER_ADMIN'] },
+    { label: 'Settings', route: '/admin/settings', icon: Settings, roles: ['DEVELOPER', 'SUPER_ADMIN'] },
+    { label: 'Developer Suite', route: '/admin/developer', icon: Terminal, roles: ['DEVELOPER'] },
   ];
 
   const visibleItems = navItems.filter((i) => !i.roles || i.roles.includes(role));

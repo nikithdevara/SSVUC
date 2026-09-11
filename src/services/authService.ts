@@ -102,9 +102,64 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     description: 'Manages festival events, public announcements, media gallery & devotional programs.',
     phone: '+91 63051 92846',
   },
+  {
+    name: 'Lead Developer',
+    email: 'developer@dev.org',
+    password: 'Devara@dev',
+    role: 'DEVELOPER',
+    roleLabel: 'Lead Developer',
+    description: 'System Developer & DevOps Console: Direct database maintenance, audit purges, sync probes & backups.',
+    phone: '+91 63051 92846',
+  },
 ];
 
 const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
+  DEVELOPER: [
+    'donations.view',
+    'donations.create',
+    'donations.edit',
+    'donations.delete',
+    'donations.approve',
+    'materials.view',
+    'materials.create',
+    'materials.edit',
+    'materials.delete',
+    'materials.approve',
+    'expenses.view',
+    'expenses.create',
+    'expenses.edit',
+    'expenses.delete',
+    'expenses.approve',
+    'events.view',
+    'events.create',
+    'events.edit',
+    'events.delete',
+    'announcements.view',
+    'announcements.create',
+    'announcements.edit',
+    'announcements.delete',
+    'gallery.view',
+    'gallery.create',
+    'gallery.edit',
+    'gallery.delete',
+    'reports.view',
+    'reports.export',
+    'users.view',
+    'users.create',
+    'users.edit',
+    'users.delete',
+    'settings.view',
+    'settings.edit',
+    'audit.view',
+    'payments.view',
+    'payments.reconcile',
+    'receipts.view',
+    'receipts.void',
+    'messages.view',
+    'messages.manage',
+    'notifications.view',
+    'developer.manage',
+  ],
   SUPER_ADMIN: [
     'donations.view',
     'donations.create',
@@ -249,7 +304,7 @@ export const authService = {
       }
 
       const user: AdminUser = {
-        id: `USR-${demo.role === 'SUPER_ADMIN' ? '01' : demo.role === 'TREASURER' ? '02' : '03'}`,
+        id: `USR-${demo.role === 'DEVELOPER' ? 'DEV' : demo.role === 'SUPER_ADMIN' ? '01' : demo.role === 'TREASURER' ? '02' : '03'}`,
         name: demo.name,
         email: demo.email,
         role: demo.role,
@@ -378,6 +433,8 @@ export const authService = {
 
   getRoleLabel(role: AdminRole): string {
     switch (role) {
+      case 'DEVELOPER':
+        return 'Lead Developer';
       case 'SUPER_ADMIN':
         return 'Super Admin';
       case 'TREASURER':
@@ -387,5 +444,9 @@ export const authService = {
       default:
         return role;
     }
+  },
+  isDeveloper(): boolean {
+    const user = this.getCurrentUser();
+    return user?.role === 'DEVELOPER' || user?.email.toLowerCase() === 'developer@dev.org';
   },
 };

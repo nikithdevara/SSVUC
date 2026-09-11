@@ -29,6 +29,52 @@ export interface AuthContextType {
 }
 
 const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
+  DEVELOPER: [
+    'donations.view',
+    'donations.create',
+    'donations.edit',
+    'donations.delete',
+    'donations.approve',
+    'materials.view',
+    'materials.create',
+    'materials.edit',
+    'materials.delete',
+    'materials.approve',
+    'expenses.view',
+    'expenses.create',
+    'expenses.edit',
+    'expenses.delete',
+    'expenses.approve',
+    'events.view',
+    'events.create',
+    'events.edit',
+    'events.delete',
+    'announcements.view',
+    'announcements.create',
+    'announcements.edit',
+    'announcements.delete',
+    'gallery.view',
+    'gallery.create',
+    'gallery.edit',
+    'gallery.delete',
+    'reports.view',
+    'reports.export',
+    'users.view',
+    'users.create',
+    'users.edit',
+    'users.delete',
+    'settings.view',
+    'settings.edit',
+    'audit.view',
+    'payments.view',
+    'payments.reconcile',
+    'receipts.view',
+    'receipts.void',
+    'messages.view',
+    'messages.manage',
+    'notifications.view',
+    'developer.manage',
+  ],
   SUPER_ADMIN: [
     'donations.view',
     'donations.create',
@@ -66,6 +112,13 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'settings.view',
     'settings.edit',
     'audit.view',
+    'payments.view',
+    'payments.reconcile',
+    'receipts.view',
+    'receipts.void',
+    'messages.view',
+    'messages.manage',
+    'notifications.view',
   ],
   TREASURER: [
     'donations.view',
@@ -110,6 +163,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
 function normalizeRole(roleStr?: string): AdminRole {
   if (!roleStr) return 'COMMITTEE_ADMIN';
   const clean = roleStr.toUpperCase().replace('-', '_');
+  if (clean.includes('DEV')) return 'DEVELOPER';
   if (clean.includes('SUPER')) return 'SUPER_ADMIN';
   if (clean.includes('TREASUR')) return 'TREASURER';
   return 'COMMITTEE_ADMIN';
@@ -117,6 +171,8 @@ function normalizeRole(roleStr?: string): AdminRole {
 
 function getRoleDisplayLabel(role: AdminRole): string {
   switch (role) {
+    case 'DEVELOPER':
+      return 'Lead Developer';
     case 'SUPER_ADMIN':
       return 'Super Admin';
     case 'TREASURER':
