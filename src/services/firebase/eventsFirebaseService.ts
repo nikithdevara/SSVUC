@@ -53,13 +53,11 @@ export const eventsFirebaseService = {
   async getPublicEvents(): Promise<EventItem[]> {
     if (isFirebaseConfigured() && db) {
       try {
-        const q = query(
-          collection(db, COLLECTIONS.EVENTS),
-          where('published', '==', true),
-          orderBy('dayNumber', 'asc')
-        );
-        const snap = await getDocs(q);
-        return snap.docs.map((d) => ({ id: d.id, ...d.data() } as EventItem));
+        const snap = await getDocs(collection(db, COLLECTIONS.EVENTS));
+        const items = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as EventItem))
+          .filter((e) => e.published);
+        return items.sort((a, b) => (Number(a.dayNumber) || 0) - (Number(b.dayNumber) || 0));
       } catch (err) {
         console.warn('[Public Events Firestore] Fallback:', err);
       }

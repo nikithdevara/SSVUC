@@ -41,7 +41,7 @@ import { ToastProvider } from './components/common/Toast';
 
 // Services
 import { authService } from './services/authService';
-import { svucStore } from './services/store';
+import { svucStore, initGlobalFirestoreSync } from './services/store';
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
@@ -57,6 +57,12 @@ function AppContent() {
   const [currentRoute, setCurrentRoute] = useState<string>(getInitialRoute());
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [authVersion, setAuthVersion] = useState(0);
+
+  // Initialize universal real-time database sync across devices
+  useEffect(() => {
+    const cleanupSync = initGlobalFirestoreSync();
+    return () => cleanupSync();
+  }, []);
 
   useEffect(() => {
     const handleHashChange = () => {

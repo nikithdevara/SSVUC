@@ -94,19 +94,15 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ onNavigate }) => {
     // 2. Real-time Cloud Firestore live listener
     let unsubscribe: (() => void) | undefined;
     if (isFirebaseConfigured() && db) {
-      try {
-        const q = query(collection(db, COLLECTIONS.MATERIALS), orderBy('date', 'desc'));
         unsubscribe = onSnapshot(
-          q,
+          collection(db, COLLECTIONS.MATERIALS),
           (snapshot) => {
             const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
+            list.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
             setMaterials(list);
           },
           (err) => console.warn('[Live Materials Firestore Stream]', err)
         );
-      } catch (err) {
-        console.warn('[Materials Firestore Listen Error]', err);
-      }
     }
 
     const handleStoreUpdate = () => refreshMaterials();

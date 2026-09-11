@@ -55,16 +55,16 @@ export const materialsFirebaseService = {
   async getPublicApprovedMaterials(): Promise<MaterialDonation[]> {
     if (isFirebaseConfigured() && db) {
       try {
-        const q = query(
-          collection(db, COLLECTIONS.MATERIALS),
-          where('status', 'in', ['Approved', 'approved', 'Verified']),
-          orderBy('date', 'desc'),
-          limit(100)
-        );
-        const snap = await getDocs(q);
-        return snap.docs
+        const snap = await getDocs(collection(db, COLLECTIONS.MATERIALS));
+        const items = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as MaterialDonation))
-          .filter((m: any) => m.publicVisibility !== false && !m.archived);
+          .filter(
+            (m: any) =>
+              (m.status === 'Approved' || m.status === 'approved' || m.status === 'Verified') &&
+              m.publicVisibility !== false &&
+              !m.archived
+          );
+        return items.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
       } catch (err) {
         console.warn('[Public Materials Firestore] Fallback to store:', err);
       }

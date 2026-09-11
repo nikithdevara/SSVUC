@@ -56,7 +56,9 @@ export const TransparencyPage: React.FC<TransparencyPageProps> = ({ onNavigate }
         }, (err) => console.warn('[Live Transparency Donations Stream]', err));
 
         unsubExp = onSnapshot(collection(db, COLLECTIONS.EXPENSES), (snap) => {
-          const liveExps = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+          const liveExps = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() } as Expense))
+            .filter((e) => e.status === 'Approved' || e.status === 'Paid');
           liveExps.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
           setExpenses(liveExps);
         }, (err) => console.warn('[Live Transparency Expenses Stream]', err));
@@ -77,7 +79,9 @@ export const TransparencyPage: React.FC<TransparencyPageProps> = ({ onNavigate }
       setDonations(
         svucStore.getDonations().filter((d) => d.status === 'Approved' || d.status === 'Verified')
       );
-      setExpenses(svucStore.getExpenses());
+      setExpenses(
+        svucStore.getExpenses().filter((e) => e.status === 'Approved' || e.status === 'Paid')
+      );
       setMaterials(
         svucStore.getMaterials().filter((m) => m.status === 'Approved' || m.status === 'Verified')
       );

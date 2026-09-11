@@ -35,18 +35,29 @@ export const AnnouncementsPage: React.FC<AnnouncementsPageProps> = ({ initialId,
   );
 
   useEffect(() => {
+    let unsub: (() => void) | undefined;
     if (isFirebaseConfigured() && db) {
-      const q = query(collection(db, 'announcements'), orderBy('date', 'desc'));
-      const unsub = onSnapshot(q, (snapshot) => {
-        const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement));
-        setAnnouncements(live.filter((a) => a.published !== false));
-      });
-      return () => unsub();
-    } else {
-      const handleUpdate = () => setAnnouncements(svucStore.getAnnouncements());
-      window.addEventListener('svuc_store_updated', handleUpdate);
-      return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+      unsub = onSnapshot(
+        collection(db, 'announcements'),
+        (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement));
+          live.sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
+          setAnnouncements(live.filter((a) => a.published !== false));
+        },
+        (err) => console.warn('[Live Announcements Firestore Stream Error]', err)
+      );
     }
+
+    const handleUpdate = () => {
+      const list = svucStore.getAnnouncements().filter((a) => a.published !== false);
+      list.sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
+      setAnnouncements(list);
+    };
+    window.addEventListener('svuc_store_updated', handleUpdate);
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   useEffect(() => {

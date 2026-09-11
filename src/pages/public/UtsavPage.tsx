@@ -25,18 +25,29 @@ export const UtsavPage: React.FC<UtsavPageProps> = ({ onNavigate }) => {
   const [events, setEvents] = useState<EventItem[]>(svucStore.getEvents());
 
   useEffect(() => {
+    let unsub: (() => void) | undefined;
     if (isFirebaseConfigured() && db) {
-      const q = query(collection(db, 'events'), orderBy('dayNumber', 'asc'));
-      const unsub = onSnapshot(q, (snapshot) => {
-        const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as EventItem));
-        setEvents(live.filter((e) => e.published !== false));
-      });
-      return () => unsub();
-    } else {
-      const handleUpdate = () => setEvents(svucStore.getEvents());
-      window.addEventListener('svuc_store_updated', handleUpdate);
-      return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+      unsub = onSnapshot(
+        collection(db, 'events'),
+        (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as EventItem));
+          live.sort((a, b) => (a.dayNumber || 0) - (b.dayNumber || 0));
+          setEvents(live.filter((e) => e.published !== false));
+        },
+        (err) => console.warn('[Live Events Firestore Stream Error]', err)
+      );
     }
+
+    const handleUpdate = () => {
+      const list = svucStore.getEvents().filter((e) => e.published !== false);
+      list.sort((a, b) => (a.dayNumber || 0) - (b.dayNumber || 0));
+      setEvents(list);
+    };
+    window.addEventListener('svuc_store_updated', handleUpdate);
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   const handleNav = (route: string) => {

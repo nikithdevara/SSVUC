@@ -52,16 +52,11 @@ export const expensesFirebaseService = {
   async getPublicExpenses(): Promise<Expense[]> {
     if (isFirebaseConfigured() && db) {
       try {
-        const q = query(
-          collection(db, COLLECTIONS.EXPENSES),
-          where('status', 'in', ['Approved', 'approved', 'Paid']),
-          orderBy('date', 'desc'),
-          limit(100)
-        );
-        const snap = await getDocs(q);
-        return snap.docs
+        const snap = await getDocs(collection(db, COLLECTIONS.EXPENSES));
+        const items = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as Expense))
-          .filter((e: any) => e.publicVisibility !== false && !e.archived);
+          .filter((e: any) => (e.status === 'Approved' || e.status === 'Paid') && e.publicVisibility !== false && !e.archived);
+        return items.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
       } catch (err) {
         console.warn('[Public Expenses Firestore] Fallback to store:', err);
       }

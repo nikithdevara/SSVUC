@@ -57,9 +57,8 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ onNavigate }) => {
           (snapshot) => {
             const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
             list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
-            if (list.length > 0) {
-              setExpenses(list);
-            }
+            const approved = list.filter((e) => e.status === 'Approved' || e.status === 'Paid');
+            setExpenses(approved);
           },
           (err) => console.warn('[Live Expenses Firestore Stream]', err)
         );
@@ -68,7 +67,10 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ onNavigate }) => {
       }
     }
 
-    const handleUpdate = () => setExpenses(svucStore.getExpenses());
+    const handleUpdate = () => {
+      const list = svucStore.getExpenses().filter((e) => e.status === 'Approved' || e.status === 'Paid');
+      setExpenses(list);
+    };
     window.addEventListener('svuc_store_updated', handleUpdate);
     return () => {
       if (unsubscribe) unsubscribe();

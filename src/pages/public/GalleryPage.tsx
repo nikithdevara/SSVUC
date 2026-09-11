@@ -29,18 +29,27 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({ onNavigate }) => {
   const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
 
   useEffect(() => {
+    let unsub: (() => void) | undefined;
     if (isFirebaseConfigured() && db) {
-      const q = query(collection(db, 'gallery'), orderBy('year', 'desc'));
-      const unsub = onSnapshot(q, (snapshot) => {
-        const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as GalleryItem));
-        setImages(live.filter((g) => g.published !== false));
-      });
-      return () => unsub();
-    } else {
-      const handleUpdate = () => setImages(svucStore.getGallery());
-      window.addEventListener('svuc_store_updated', handleUpdate);
-      return () => window.removeEventListener('svuc_store_updated', handleUpdate);
+      unsub = onSnapshot(
+        collection(db, 'gallery'),
+        (snapshot) => {
+          const live = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as GalleryItem));
+          setImages(live.filter((g) => g.published !== false));
+        },
+        (err) => console.warn('[Live Gallery Firestore Stream Error]', err)
+      );
     }
+
+    const handleUpdate = () => {
+      const list = svucStore.getGallery().filter((g) => g.published !== false);
+      setImages(list);
+    };
+    window.addEventListener('svuc_store_updated', handleUpdate);
+    return () => {
+      if (unsub) unsub();
+      window.removeEventListener('svuc_store_updated', handleUpdate);
+    };
   }, []);
 
   const filtered = images.filter((img) => {

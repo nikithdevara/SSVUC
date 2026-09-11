@@ -23,6 +23,10 @@ import {
   initialAdminUsers,
   initialSettings,
 } from '../data/mockData';
+import { db, isFirebaseConfigured } from '../lib/firebase';
+import { COLLECTIONS } from './firebase/firestoreService';
+import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { seedService } from './firebase/seedService';
 
 export const STORAGE_KEYS = {
   DONATIONS: 'svuc_donations_2026_clean',
@@ -853,6 +857,18 @@ export const svucStore = {
     return true;
   },
 
+  // --- Settings Persistence ---
+  saveSettings(settings: CommitteeSettings): void {
+    setLocal(STORAGE_KEYS.SETTINGS, settings);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
+  // --- Audit Logs Persistence ---
+  saveAuditLogs(logs: AuditLog[]): void {
+    setLocal(STORAGE_KEYS.AUDIT_LOGS, logs);
+    window.dispatchEvent(new Event('svuc_store_updated'));
+  },
+
   // --- Admin Users alias ---
   getUsers(): AdminUser[] {
     return this.getAdminUsers();
@@ -864,4 +880,174 @@ export const svucStore = {
     window.dispatchEvent(new Event('svuc_store_updated'));
   },
 };
+
+let hasInitializedFirestoreSync = false;
+
+/**
+ * Universal live synchronization engine that links Cloud Firestore with all active clients/devices in real time
+ */
+export function initGlobalFirestoreSync(): () => void {
+  if (hasInitializedFirestoreSync) return () => {};
+  hasInitializedFirestoreSync = true;
+
+  const unsubscribers: Array<() => void> = [];
+
+  if (isFirebaseConfigured() && db) {
+    // 1. Initial check & auto-seed baseline committee records if Firestore is completely fresh
+    getDoc(doc(db, COLLECTIONS.SETTINGS, 'committee'))
+      .then((snap) => {
+        if (!snap.exists()) {
+          console.log('[Firestore Auto-Seed] Database is uninitialized. Running initial committee baseline data seed...');
+          seedService.seedInitialCommitteeData().catch((err) => {
+            console.warn('[Firestore Auto-Seed Error]', err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('[Firestore Settings Check Error]', err);
+      });
+
+    // 2. Real-time Live Listeners for all core collections across all network devices
+    // Expenses
+    const unsubExp = onSnapshot(
+      collection(db, COLLECTIONS.EXPENSES),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+          list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+          svucStore.saveExpenses(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Expenses Error]', err)
+    );
+    unsubscribers.push(unsubExp);
+
+    // Monetary Donations
+    const unsubDon = onSnapshot(
+      collection(db, COLLECTIONS.DONATIONS),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Donation));
+          list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+          svucStore.saveDonations(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Donations Error]', err)
+    );
+    unsubscribers.push(unsubDon);
+
+    // Material Donations
+    const unsubMat = onSnapshot(
+      collection(db, COLLECTIONS.MATERIALS),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as MaterialDonation));
+          list.sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+          svucStore.saveMaterials(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Materials Error]', err)
+    );
+    unsubscribers.push(unsubMat);
+
+    // Festival Events & Schedule
+    const unsubEvt = onSnapshot(
+      collection(db, COLLECTIONS.EVENTS),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as EventItem));
+          list.sort((a, b) => (a.dayNumber || 0) - (b.dayNumber || 0));
+          svucStore.saveEvents(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Events Error]', err)
+    );
+    unsubscribers.push(unsubEvt);
+
+    // Announcements & Broadcasts
+    const unsubAnn = onSnapshot(
+      collection(db, COLLECTIONS.ANNOUNCEMENTS),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement));
+          list.sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''));
+          svucStore.saveAnnouncements(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Announcements Error]', err)
+    );
+    unsubscribers.push(unsubAnn);
+
+    // Media Gallery
+    const unsubGal = onSnapshot(
+      collection(db, COLLECTIONS.GALLERY),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as GalleryItem));
+          svucStore.saveGallery(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Gallery Error]', err)
+    );
+    unsubscribers.push(unsubGal);
+
+    // Committee Settings
+    const unsubSet = onSnapshot(
+      doc(db, COLLECTIONS.SETTINGS, 'committee'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as CommitteeSettings;
+          svucStore.saveSettings(data);
+        }
+      },
+      (err) => console.warn('[Live Sync Settings Error]', err)
+    );
+    unsubscribers.push(unsubSet);
+
+    // Devotee Inquiries & Contact Messages
+    const unsubMsg = onSnapshot(
+      collection(db, COLLECTIONS.CONTACT_MESSAGES),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContactMessage));
+          list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          svucStore.saveContactMessages(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Contact Messages Error]', err)
+    );
+    unsubscribers.push(unsubMsg);
+
+    // Official Receipts
+    const unsubRec = onSnapshot(
+      collection(db, COLLECTIONS.RECEIPTS),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Receipt));
+          svucStore.saveReceipts(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Receipts Error]', err)
+    );
+    unsubscribers.push(unsubRec);
+
+    // Admin Users Profiles
+    const unsubUsr = onSnapshot(
+      collection(db, COLLECTIONS.USERS),
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AdminUser));
+          svucStore.saveAdminUsers(list);
+        }
+      },
+      (err) => console.warn('[Live Sync Users Error]', err)
+    );
+    unsubscribers.push(unsubUsr);
+  }
+
+  return () => {
+    unsubscribers.forEach((u) => u());
+    hasInitializedFirestoreSync = false;
+  };
+}
 
