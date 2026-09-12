@@ -225,10 +225,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                   <span className="text-[11px] text-[#292524]/60">Committee Coordinator</span>
                 </div>
                 <a
-                  href="tel:+919989012345"
+                  href="tel:+916305192846"
                   className="font-mono font-bold text-xs text-[#166534] bg-[#166534]/10 px-3 py-1.5 rounded-lg hover:bg-[#166534]/20"
                 >
-                  +91 99890 12345
+                  +91 63051 92846
                 </a>
               </div>
 
@@ -238,10 +238,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                   <span className="text-[11px] text-[#292524]/60">Volunteer Lead</span>
                 </div>
                 <a
-                  href="tel:+919849087654"
+                  href="tel:+916305192846"
                   className="font-mono font-bold text-xs text-[#166534] bg-[#166534]/10 px-3 py-1.5 rounded-lg hover:bg-[#166534]/20"
                 >
-                  +91 98490 87654
+                  +91 63051 92846
                 </a>
               </div>
             </div>

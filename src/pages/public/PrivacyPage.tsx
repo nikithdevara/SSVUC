@@ -118,7 +118,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onNavigate }) => {
           <div className="p-4 rounded-xl bg-[#FFF9ED] border border-[#C9972B]/20 text-xs font-mono space-y-1 text-[#292524]">
             <div>Sri Siddhi Vinayaka Utsava Committee</div>
             <div>Gandhinagar Anjayya Colony, Anakapalle - 531001, Andhra Pradesh</div>
-            <div>Email: contact@siddhivinayaka-utsav.org | Phone: +91 63051 92846</div>
+            <div>Email: saisanthosha09@gmail.com | Phone: +91 63051 92846</div>
           </div>
         </div>
       </div>

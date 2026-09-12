@@ -1066,7 +1066,7 @@ export const svucStore = {
         name: 'Sri M. Satyanarayana',
         role: 'Maha Annadanam In-charge',
         servingSince: 'Serving since 2016 (10 years)',
-        phoneNumber: '+91 99890 12345',
+        phoneNumber: '+91 63051 92846',
         photoUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
         bio: 'Leads the dedicated satvik kitchen team that prepares feasts for 3,000+ devotees, supervising rice donations, clean drinking water, and hygienic dining arrangements.',
       },

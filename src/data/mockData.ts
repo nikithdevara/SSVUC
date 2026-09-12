@@ -22,7 +22,7 @@ export const initialSettings: CommitteeSettings = {
   pincode: '531001',
   contactPhone1: '+91 63051 92846',
   contactPhone2: '+91 63051 92846',
-  contactEmail: 'contact@siddhivinayaka-utsav.org',
+  contactEmail: 'saisanthosha09@gmail.com',
   contactPhone: '+91 63051 92846',
   whatsappNumber: '+916305192846',
   upiId: '8919982789@axl',

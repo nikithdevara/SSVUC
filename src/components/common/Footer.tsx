@@ -120,7 +120,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#F59E0B] shrink-0" />
-                <span>contact@siddhivinayaka-utsav.org</span>
+                <span>saisanthosha09@gmail.com</span>
               </div>
               <div className="pt-2 border-t border-[#FFF9ED]/10 flex items-center gap-3 text-[11px]">
                 <button onClick={() => handleNav('/contact')} className="hover:text-[#F59E0B] cursor-pointer">
